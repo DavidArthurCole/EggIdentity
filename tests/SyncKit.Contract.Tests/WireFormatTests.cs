@@ -54,7 +54,7 @@ public class WireFormatTests {
         };
         var json = System.Text.Json.JsonSerializer.Serialize(pr);
         Assert.Equal(
-            "{\"userId\":\"11111111-1111-1111-1111-111111111111\",\"username\":\"alice\",\"avatar\":\"/avatars/11111111-1111-1111-1111-111111111111\",\"avatarIsCustom\":true,\"identities\":[{\"provider\":\"authentik\",\"subject\":\"sub-1\",\"username\":\"alice\",\"avatar\":\"https://cdn/a.png\",\"linkedAt\":\"2026-07-22T00:00:00+00:00\"}]}",
+            "{\"userId\":\"11111111-1111-1111-1111-111111111111\",\"username\":\"alice\",\"avatar\":\"/avatars/11111111-1111-1111-1111-111111111111\",\"avatarIsCustom\":true,\"identities\":[{\"provider\":\"authentik\",\"subject\":\"sub-1\",\"username\":\"alice\",\"avatar\":\"https://cdn/a.png\",\"linkedAt\":\"2026-07-22T00:00:00+00:00\"}],\"authentikSettingsUrl\":null}",
             json);
     }
 
