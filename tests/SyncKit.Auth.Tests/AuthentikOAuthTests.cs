@@ -6,7 +6,7 @@ namespace SyncKit.Auth.Tests;
 public class AuthentikOAuthTests {
     [Fact]
     public void BuildAuthParams_ContainsPkceAndClientId() {
-        var oauth = new AuthentikOAuth("https://auth.example.com/application/o/synckit-login/", "client123", "secret", "https://identity.example.com/login/callback");
+        var oauth = new AuthentikOAuth("https://auth.example.com/application/o/synckit-login/", "client123", "secret", "https://identity.example.com/auth/callback");
         var (query, state, verifier) = oauth.BuildAuthParams();
 
         Assert.Contains("client_id=client123", query);
@@ -20,7 +20,7 @@ public class AuthentikOAuthTests {
 
     [Fact]
     public void BuildAuthParams_StateAndVerifierAreRandomPerCall() {
-        var oauth = new AuthentikOAuth("https://auth.example.com/application/o/synckit-login/", "client123", "secret", "https://identity.example.com/login/callback");
+        var oauth = new AuthentikOAuth("https://auth.example.com/application/o/synckit-login/", "client123", "secret", "https://identity.example.com/auth/callback");
         var (_, state1, verifier1) = oauth.BuildAuthParams();
         var (_, state2, verifier2) = oauth.BuildAuthParams();
 
@@ -30,7 +30,7 @@ public class AuthentikOAuthTests {
 
     [Fact]
     public void BuildAuthParams_ContainsSameParamsAsAuthUrl_WithoutAuthorizeEndpointPrefix() {
-        var oauth = new AuthentikOAuth("https://auth.example.com", "client123", "secret", "https://identity.example.com/login/callback");
+        var oauth = new AuthentikOAuth("https://auth.example.com", "client123", "secret", "https://identity.example.com/auth/callback");
         var (query, state, verifier) = oauth.BuildAuthParams();
 
         Assert.DoesNotContain("/application/o/authorize/", query);
@@ -46,7 +46,7 @@ public class AuthentikOAuthTests {
 
     [Fact]
     public void Authority_AndBuildAuthParams_ComposeIntoAuthorizeUrl() {
-        var oauth = new AuthentikOAuth("https://auth.example.com", "client123", "secret", "https://identity.example.com/login/callback");
+        var oauth = new AuthentikOAuth("https://auth.example.com", "client123", "secret", "https://identity.example.com/auth/callback");
         var (query, state, verifier) = oauth.BuildAuthParams();
         var url = $"{oauth.Authority}/application/o/authorize/?{query}";
 
@@ -54,6 +54,38 @@ public class AuthentikOAuthTests {
         Assert.Contains("client_id=client123", url);
         Assert.Contains("state=" + state, url);
         Assert.True(verifier.Length >= 43);
+    }
+
+    [Fact]
+    public void BuildAuthParams_ScopeIncludesAllFourSourceClaims() {
+        var oauth = new AuthentikOAuth("https://auth.example.com", "client123", "secret", "https://identity.example.com/auth/callback");
+        var (query, _, _) = oauth.BuildAuthParams();
+
+        Assert.Contains("scope=openid+profile+email+discord_id+google_id+microsoft_id+github_id", query);
+    }
+
+    [Fact]
+    public void AuthentikTokenResult_PerSourceIds_MapsAllFourProviders() {
+        var token = new AuthentikTokenResult(
+            Sub: "sub123", DiscordId: "d1", GoogleId: "g1", MicrosoftId: "m1", GitHubId: "h1",
+            Username: "user", Avatar: null, Sid: null, IdToken: null);
+
+        Assert.Equal("d1", token.PerSourceIds["discord"]);
+        Assert.Equal("g1", token.PerSourceIds["google"]);
+        Assert.Equal("m1", token.PerSourceIds["microsoft"]);
+        Assert.Equal("h1", token.PerSourceIds["github"]);
+    }
+
+    [Fact]
+    public void AuthentikTokenResult_PerSourceIds_NullClaimsStayNull() {
+        var token = new AuthentikTokenResult(
+            Sub: "sub123", DiscordId: "d1", GoogleId: null, MicrosoftId: null, GitHubId: null,
+            Username: "user", Avatar: null, Sid: null, IdToken: null);
+
+        Assert.Equal("d1", token.PerSourceIds["discord"]);
+        Assert.Null(token.PerSourceIds["google"]);
+        Assert.Null(token.PerSourceIds["microsoft"]);
+        Assert.Null(token.PerSourceIds["github"]);
     }
 
     [Fact]

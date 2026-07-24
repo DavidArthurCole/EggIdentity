@@ -21,7 +21,7 @@
   function login(identityHostUrl, provider) {
     return new Promise(function (resolve, reject) {
       var returnUrl = window.location.href;
-      var goUrl = identityHostUrl.replace(/\/$/, "") + "/login/go/" + encodeURIComponent(provider) + "?returnUrl=" + encodeURIComponent(returnUrl);
+      var goUrl = identityHostUrl.replace(/\/$/, "") + "/auth/go/" + encodeURIComponent(provider) + "?returnUrl=" + encodeURIComponent(returnUrl);
       var popup = window.open(goUrl, "synckit-login", "width=480,height=640");
 
       if (!popup) {

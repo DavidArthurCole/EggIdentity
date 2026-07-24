@@ -7,16 +7,16 @@ public class RelinkUrlTests {
 
     [Fact]
     public void BuildRelinkContinueUrl_CallbackSuffix_ReplacesWithRelinkContinue() {
-        var url = Program.BuildRelinkContinueUrl("https://id.example.com/login/callback");
+        var url = Program.BuildRelinkContinueUrl("https://id.example.com/auth/callback");
 
-        Assert.Equal("https://id.example.com/login/relink/continue", url);
+        Assert.Equal("https://id.example.com/auth/relink/continue", url);
     }
 
     [Fact]
     public void BuildRelinkContinueUrl_NoCallbackSuffix_AppendsRelinkContinue() {
-        var url = Program.BuildRelinkContinueUrl("https://id.example.com/login/");
+        var url = Program.BuildRelinkContinueUrl("https://id.example.com/auth/");
 
-        Assert.Equal("https://id.example.com/login/relink/continue", url);
+        Assert.Equal("https://id.example.com/auth/relink/continue", url);
     }
 
     [Fact]
@@ -24,12 +24,12 @@ public class RelinkUrlTests {
         var url = Program.BuildRelinkLogoutUrl(
             "https://auth.example.com/end",
             "id.tok.en",
-            "https://id.example.com/login/relink/continue",
+            "https://id.example.com/auth/relink/continue",
             "https://auth.example.com/if/flow/discord-only-auth/?next=x");
 
         Assert.Equal(
             "https://auth.example.com/end?id_token_hint=id.tok.en"
-            + "&post_logout_redirect_uri=https%3A%2F%2Fid.example.com%2Flogin%2Frelink%2Fcontinue"
+            + "&post_logout_redirect_uri=https%3A%2F%2Fid.example.com%2Fauth%2Frelink%2Fcontinue"
             + "&state=https%3A%2F%2Fauth.example.com%2Fif%2Fflow%2Fdiscord-only-auth%2F%3Fnext%3Dx",
             url);
     }
@@ -39,7 +39,7 @@ public class RelinkUrlTests {
         var url = Program.BuildRelinkLogoutUrl(
             "https://auth.example.com/end?foo=bar",
             "id.tok.en",
-            "https://id.example.com/login/relink/continue",
+            "https://id.example.com/auth/relink/continue",
             "https://auth.example.com/if/flow/discord-only-auth/?next=x");
 
         Assert.StartsWith("https://auth.example.com/end?foo=bar&id_token_hint=id.tok.en", url);

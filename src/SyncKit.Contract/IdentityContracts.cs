@@ -148,6 +148,9 @@ public sealed class ProfileResponse {
 
     [JsonPropertyName("identities")]
     public List<ProfileIdentityResponse> Identities { get; set; } = [];
+
+    [JsonPropertyName("authentikSettingsUrl")]
+    public string? AuthentikSettingsUrl { get; set; }
 }
 
 public sealed class LinkResultResponse {

@@ -4,7 +4,16 @@ using System.Text.Json;
 
 namespace SyncKit.Auth;
 
-public sealed record AuthentikTokenResult(string Sub, string? DiscordId, string? Username, string? Avatar, string? Sid, string? IdToken);
+public sealed record AuthentikTokenResult(
+    string Sub, string? DiscordId, string? GoogleId, string? MicrosoftId, string? GitHubId,
+    string? Username, string? Avatar, string? Sid, string? IdToken) {
+    public IReadOnlyDictionary<string, string?> PerSourceIds => new Dictionary<string, string?> {
+        ["discord"] = DiscordId,
+        ["google"] = GoogleId,
+        ["microsoft"] = MicrosoftId,
+        ["github"] = GitHubId,
+    };
+}
 
 public sealed class AuthentikOAuth(string authority, string clientId, string clientSecret, string callbackUrl) {
     private static readonly HttpClient Http = new();
@@ -24,7 +33,7 @@ public sealed class AuthentikOAuth(string authority, string clientId, string cli
             ["client_id"] = ClientId,
             ["redirect_uri"] = CallbackUrl,
             ["response_type"] = "code",
-            ["scope"] = "openid+profile+email+discord_id",
+            ["scope"] = "openid+profile+email+discord_id+google_id+microsoft_id+github_id",
             ["state"] = state,
             ["code_challenge"] = challenge,
             ["code_challenge_method"] = "S256",
@@ -66,6 +75,9 @@ public sealed class AuthentikOAuth(string authority, string clientId, string cli
         return new AuthentikTokenResult(
             Sub: sub,
             DiscordId: root.TryGetProperty("discord_id", out var did) ? did.GetString() : null,
+            GoogleId: root.TryGetProperty("google_id", out var gid) ? gid.GetString() : null,
+            MicrosoftId: root.TryGetProperty("microsoft_id", out var mid) ? mid.GetString() : null,
+            GitHubId: root.TryGetProperty("github_id", out var hid) ? hid.GetString() : null,
             Username: root.TryGetProperty("preferred_username", out var un) ? un.GetString() : null,
             Avatar: root.TryGetProperty("picture", out var av) ? av.GetString() : null,
             Sid: sid,

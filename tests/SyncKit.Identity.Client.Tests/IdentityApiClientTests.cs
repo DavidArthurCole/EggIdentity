@@ -107,7 +107,16 @@ public class IdentityApiClientTests {
 
         var url = client.StartRelinkUrl("github", "https://app.example.com/settings");
 
-        Assert.Equal("/login/relink/github?returnUrl=https%3A%2F%2Fapp.example.com%2Fsettings", url);
+        Assert.Equal("/auth/relink/github?returnUrl=https%3A%2F%2Fapp.example.com%2Fsettings", url);
+    }
+
+    [Fact]
+    public void SyncUrl_BuildsRelativeUrl_WithReturnUrl() {
+        var (client, _) = MakeClient(new HttpResponseMessage(HttpStatusCode.OK));
+
+        var url = client.SyncUrl("https://app.example.com/settings");
+
+        Assert.Equal("/profile/sync?returnUrl=https%3A%2F%2Fapp.example.com%2Fsettings", url);
     }
 
     [Fact]

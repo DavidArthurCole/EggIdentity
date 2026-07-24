@@ -18,7 +18,7 @@ public class AppAuthConfigTests {
             Origin=https://egg-incognito.example.com
             ClientId=egi-client
             ClientSecret=egi-secret
-            CallbackUrl=https://identity.example.com/login/callback
+            CallbackUrl=https://identity.example.com/auth/callback
             """));
 
         var result = AppAuthConfigLoader.LoadFromDirectory(dir, "https://auth.example.com");
@@ -35,13 +35,13 @@ public class AppAuthConfigTests {
                 Origin=https://egg-incognito.example.com
                 ClientId=egi-client
                 ClientSecret=egi-secret
-                CallbackUrl=https://identity.example.com/login/callback
+                CallbackUrl=https://identity.example.com/auth/callback
                 """),
             ("egl.app.1", """
                 Origin=https://egg-ledger.example.com
                 ClientId=egl-client
                 ClientSecret=egl-secret
-                CallbackUrl=https://identity.example.com/login/callback
+                CallbackUrl=https://identity.example.com/auth/callback
                 """));
 
         var result = AppAuthConfigLoader.LoadFromDirectory(dir, "https://auth.example.com");
@@ -76,7 +76,7 @@ public class AppAuthConfigTests {
             Origin=https://egg-incognito.example.com
             ClientId=egi-client
             ClientSecret=egi-secret
-            CallbackUrl=https://identity.example.com/login/callback
+            CallbackUrl=https://identity.example.com/auth/callback
             EndSessionUrl=https://auth.example.com/application/o/egi/end-session/
             """));
 
@@ -91,7 +91,7 @@ public class AppAuthConfigTests {
             Origin=https://egg-incognito.example.com
             ClientId=egi-client
             ClientSecret=egi-secret
-            CallbackUrl=https://identity.example.com/login/callback
+            CallbackUrl=https://identity.example.com/auth/callback
             """));
 
         var result = AppAuthConfigLoader.LoadFromDirectory(dir, "https://auth.example.com");
@@ -106,7 +106,7 @@ public class AppAuthConfigTests {
 
             ClientId=egi-client
             ClientSecret=egi-secret
-            CallbackUrl=https://identity.example.com/login/callback
+            CallbackUrl=https://identity.example.com/auth/callback
 
             """));
 

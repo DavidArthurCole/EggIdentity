@@ -75,7 +75,7 @@
             EventCallback.Factory.Create(this, () => SelectAvatarAsync(identity)),
             EventCallback.Factory.Create(this, () => UnlinkAsync(identity))
         )).ToList();
-        return new ProfileIdentitiesContext(items, _banner);
+        return new ProfileIdentitiesContext(items, _banner, Identity.SyncUrl(ReturnUrl), _profile.AuthentikSettingsUrl);
     }
 
     private ProfileProvidersContext BuildProvidersContext() {
@@ -185,6 +185,24 @@
             builder.AddAttribute(seq++, "onclick", item.OnUnlink);
             builder.AddContent(seq++, UnlinkIconSvg);
             builder.CloseElement();
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "skp-sync-row");
+        builder.OpenElement(seq++, "a");
+        builder.AddAttribute(seq++, "class", "skp-sync-link");
+        builder.AddAttribute(seq++, "href", ctx.SyncUrl);
+        builder.AddAttribute(seq++, "title", "Refresh connections");
+        builder.AddContent(seq++, "Sync connections");
+        builder.CloseElement();
+        if (ctx.AuthentikSettingsUrl is not null) {
+            builder.OpenElement(seq++, "a");
+            builder.AddAttribute(seq++, "class", "skp-authentik-link");
+            builder.AddAttribute(seq++, "href", ctx.AuthentikSettingsUrl);
+            builder.AddAttribute(seq++, "target", "_blank");
+            builder.AddAttribute(seq++, "rel", "noopener");
+            builder.AddContent(seq++, "Manage connections in Authentik");
             builder.CloseElement();
         }
         builder.CloseElement();

@@ -55,7 +55,7 @@ public sealed class IdentityApiClient(HttpClient http) {
     }
 
     public async Task<LoginSourcesResponse> GetLoginSourcesAsync(string returnUrl, string mode, CancellationToken ct) {
-        var url = $"/login/sources?returnUrl={Uri.EscapeDataString(returnUrl)}&mode={Uri.EscapeDataString(mode)}";
+        var url = $"/auth/sources?returnUrl={Uri.EscapeDataString(returnUrl)}&mode={Uri.EscapeDataString(mode)}";
         var resp = await http.GetAsync(url, ct);
         resp.EnsureSuccessStatusCode();
         return (await resp.Content.ReadFromJsonAsync<LoginSourcesResponse>(cancellationToken: ct))!;
@@ -74,9 +74,12 @@ public sealed class IdentityApiClient(HttpClient http) {
         $"/profile/link/{provider}/start?returnUrl={Uri.EscapeDataString(returnUrl)}";
 
     public string StartRelinkUrl(string provider, string returnUrl) =>
-        $"/login/relink/{provider}?returnUrl={Uri.EscapeDataString(returnUrl)}";
+        $"/auth/relink/{provider}?returnUrl={Uri.EscapeDataString(returnUrl)}";
 
-    public string IconUrl(string provider) => $"/login/icons/{provider}";
+    public string SyncUrl(string returnUrl) =>
+        $"/profile/sync?returnUrl={Uri.EscapeDataString(returnUrl)}";
+
+    public string IconUrl(string provider) => $"/auth/icons/{provider}";
 
     public async Task<bool> UnlinkIdentityAsync(string sessionToken, string provider, string subject, CancellationToken ct) {
         using var req = new HttpRequestMessage(HttpMethod.Post, $"/profile/identities/{provider}/{subject}/unlink");

@@ -109,6 +109,18 @@ public sealed class IdentityResolver(NpgsqlDataSource dataSource, AdminAllowlist
         return new LinkOutcome(Linked: true, Conflict: false, null, null);
     }
 
+    public async Task<IReadOnlyList<(string Provider, LinkOutcome Outcome)>> SyncSourceIdentitiesAsync(
+        Guid userId, IReadOnlyDictionary<string, string?> perSourceIds, string? username, string? avatar, CancellationToken ct) {
+        var results = new List<(string, LinkOutcome)>();
+        foreach (var (provider, subject) in perSourceIds) {
+            if (string.IsNullOrEmpty(subject)) continue;
+            var discordId = provider == "discord" ? subject : null;
+            var outcome = await TryLinkAsync(userId, provider, subject, discordId, username, avatar, ct);
+            results.Add((provider, outcome));
+        }
+        return results;
+    }
+
     private static async Task<Guid?> LookupAsync(NpgsqlConnection conn, string provider, string subject, CancellationToken ct) {
         await using var cmd = new NpgsqlCommand(
             "SELECT user_id FROM identities WHERE provider = $1 AND subject = $2", conn);

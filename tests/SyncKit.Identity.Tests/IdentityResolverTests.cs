@@ -145,4 +145,65 @@ public class IdentityResolverTests {
         var stillOther = await resolver.ResolveAsync("authentik", "link-taken-sub-1", null, "taken-owner", null, CancellationToken.None);
         Assert.Equal(other.UserId, stillOther.UserId);
     }
+
+    [Fact]
+    public async Task SyncSourceIdentitiesAsync_MultiplePopulatedProviders_LinksEachAsItsOwnRow() {
+        if (string.IsNullOrEmpty(ConnString)) return;
+        await using var db = await MakeDbAsync();
+        var resolver = MakeResolver(db);
+
+        var owner = await resolver.ResolveAsync("authentik", "sync-sub-1", null, "syncer", null, CancellationToken.None);
+        var perSourceIds = new Dictionary<string, string?> {
+            ["discord"] = "sync-discord-1",
+            ["google"] = "sync-google-1",
+            ["microsoft"] = null,
+            ["github"] = "sync-github-1",
+        };
+
+        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, "syncer", null, CancellationToken.None);
+
+        Assert.Equal(3, results.Count);
+        Assert.All(results, r => Assert.True(r.Outcome.Linked));
+        var discordResolved = await resolver.ResolveAsync("discord", "sync-discord-1", null, "syncer", null, CancellationToken.None);
+        var githubResolved = await resolver.ResolveAsync("github", "sync-github-1", null, "syncer", null, CancellationToken.None);
+        Assert.Equal(owner.UserId, discordResolved.UserId);
+        Assert.Equal(owner.UserId, githubResolved.UserId);
+    }
+
+    [Fact]
+    public async Task SyncSourceIdentitiesAsync_OneProviderClaimedByAnotherUser_ReportsConflictButLinksTheRest() {
+        if (string.IsNullOrEmpty(ConnString)) return;
+        await using var db = await MakeDbAsync();
+        var resolver = MakeResolver(db);
+
+        var otherOwner = await resolver.ResolveAsync("google", "sync-taken-google-1", null, "other", null, CancellationToken.None);
+        var owner = await resolver.ResolveAsync("authentik", "sync-sub-2", null, "syncer2", null, CancellationToken.None);
+        var perSourceIds = new Dictionary<string, string?> {
+            ["discord"] = "sync-discord-2",
+            ["google"] = "sync-taken-google-1",
+        };
+
+        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, "syncer2", null, CancellationToken.None);
+
+        var googleOutcome = results.Single(r => r.Provider == "google").Outcome;
+        var discordOutcome = results.Single(r => r.Provider == "discord").Outcome;
+        Assert.True(googleOutcome.Conflict);
+        Assert.True(discordOutcome.Linked);
+        var stillOther = await resolver.ResolveAsync("google", "sync-taken-google-1", null, "other", null, CancellationToken.None);
+        Assert.Equal(otherOwner.UserId, stillOther.UserId);
+    }
+
+    [Fact]
+    public async Task SyncSourceIdentitiesAsync_AllNullClaims_ReturnsEmptyResults() {
+        if (string.IsNullOrEmpty(ConnString)) return;
+        await using var db = await MakeDbAsync();
+        var resolver = MakeResolver(db);
+
+        var owner = await resolver.ResolveAsync("authentik", "sync-sub-3", null, "syncer3", null, CancellationToken.None);
+        var perSourceIds = new Dictionary<string, string?> { ["discord"] = null, ["google"] = null };
+
+        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, "syncer3", null, CancellationToken.None);
+
+        Assert.Empty(results);
+    }
 }

@@ -7,8 +7,11 @@ namespace SyncKit.Identity.Host;
 public static class ProfileRoutes {
     public static void Map(
         WebApplication app, SessionCookieOptions sessionOptions, string avatarStorageDir,
-        RevocationStore revocations, ProfileService profiles, UserQueries users) {
+        RevocationStore revocations, ProfileService profiles, UserQueries users, string? authentikAuthority) {
         Func<string, CancellationToken, Task<bool>> isRevoked = revocations.IsRevokedAsync;
+        var authentikSettingsUrl = string.IsNullOrEmpty(authentikAuthority)
+            ? null
+            : $"{authentikAuthority.TrimEnd('/')}/if/user/#/settings;page-sources";
 
         var profileRoutes = app.MapGroup("/profile");
 
@@ -25,13 +28,15 @@ public static class ProfileRoutes {
                 Username = user.Username,
                 Avatar = user.Avatar,
                 AvatarIsCustom = user.AvatarIsCustom,
-                Identities = [.. identities.Select(i => new ProfileIdentityResponse {
-                    Provider = i.Provider,
-                    Subject = i.Subject,
-                    Username = i.Username,
-                    Avatar = i.Avatar,
-                    LinkedAt = i.LinkedAt,
-                })],
+                Identities = [.. FilterIdentitiesForDisplay(identities)
+                    .Select(i => new ProfileIdentityResponse {
+                        Provider = i.Provider,
+                        Subject = i.Subject,
+                        Username = i.Username,
+                        Avatar = i.Avatar,
+                        LinkedAt = i.LinkedAt,
+                    })],
+                AuthentikSettingsUrl = authentikSettingsUrl,
             });
         });
 
@@ -77,5 +82,10 @@ public static class ProfileRoutes {
                 return Results.NotFound();
             return Results.File(path, contentType, enableRangeProcessing: false);
         });
+    }
+
+    public static IReadOnlyList<Models.Identity> FilterIdentitiesForDisplay(IReadOnlyList<Models.Identity> identities) {
+        var hasSourceIdentity = identities.Any(i => i.Provider != "authentik");
+        return [.. identities.Where(i => i.Provider != "authentik" || !hasSourceIdentity)];
     }
 }

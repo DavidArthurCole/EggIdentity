@@ -1,3 +1,4 @@
+using SyncKit.Identity;
 using SyncKit.Identity.Host;
 using Xunit;
 
@@ -22,7 +23,7 @@ public class LoginRoutesTests {
 
     [Fact]
     public void ResolveApp_KnownOrigin_ReturnsConfig() {
-        var oauth = new SyncKit.Auth.AuthentikOAuth("https://auth.example.com", "id", "secret", "https://identity.example.com/login/callback");
+        var oauth = new SyncKit.Auth.AuthentikOAuth("https://auth.example.com", "id", "secret", "https://identity.example.com/auth/callback");
         var configs = new Dictionary<string, AppAuthConfig> {
             ["https://app.example.com"] = new AppAuthConfig("https://app.example.com", oauth),
         };
@@ -78,5 +79,51 @@ public class LoginRoutesTests {
         var result = Program.BuildRedirectCallbackUrl("https://app.example.com/dashboard", code: null, error: "login_failed");
 
         Assert.Equal("https://app.example.com/dashboard?error=login_failed", result);
+    }
+
+    private static readonly LinkOutcome Linked = new(Linked: true, Conflict: false, null, null);
+    private static readonly LinkOutcome NotLinked = new(Linked: false, Conflict: false, null, null);
+    private static readonly LinkOutcome Conflicted = new(Linked: false, Conflict: true, "someone-else", null);
+
+    [Fact]
+    public void ComputeLinkFlag_AllSucceed_ReturnsLinkedOk() {
+        var result = Program.ComputeLinkFlag(Linked, [("discord", Linked), ("google", Linked)]);
+
+        Assert.Equal("linked=ok", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_OneSourceConflicts_NamesThatProvider() {
+        var result = Program.ComputeLinkFlag(Linked, [("discord", Linked), ("google", Conflicted)]);
+
+        Assert.Equal("linkConflict=google", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_AuthentikRowConflicts_NoSourceConflict_NamesAuthentik() {
+        var result = Program.ComputeLinkFlag(Conflicted, [("discord", Linked)]);
+
+        Assert.Equal("linkConflict=authentik", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_SourceConflictTakesPriorityOverAuthentikConflict() {
+        var result = Program.ComputeLinkFlag(Conflicted, [("discord", Conflicted)]);
+
+        Assert.Equal("linkConflict=discord", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_NothingLinkedOrConflicted_ReturnsLinkError() {
+        var result = Program.ComputeLinkFlag(NotLinked, [("discord", NotLinked)]);
+
+        Assert.Equal("linkError=1", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_EmptySourceOutcomes_FallsBackToAuthentikOutcome() {
+        var result = Program.ComputeLinkFlag(Linked, []);
+
+        Assert.Equal("linked=ok", result);
     }
 }

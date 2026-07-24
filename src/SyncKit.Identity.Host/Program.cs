@@ -59,7 +59,7 @@ await using (var conn = await dataSource.OpenConnectionAsync())
 var sweeper = new ExpiredRowSweeper(dataSource, TimeSpan.FromMinutes(sweepIntervalMinutes));
 _ = sweeper.RunAsync(app.Lifetime.ApplicationStopping);
 
-var loginRoutes = app.MapGroup("/login");
+var loginRoutes = app.MapGroup("/auth");
 
 loginRoutes.MapGet("/sources", (HttpContext ctx) => {
     if (!loginWidgetEnabled) return Results.NotFound();
@@ -70,8 +70,8 @@ loginRoutes.MapGet("/sources", (HttpContext ctx) => {
     var mode = Program.ValidateMode(ctx.Request.Query["mode"].ToString());
     var sources = Program.KnownProviders.Select(provider => new LoginSourceResponse {
         Name = char.ToUpperInvariant(provider[0]) + provider[1..],
-        IconUrl = $"/login/icons/{provider}",
-        Url = $"/login/go/{provider}?returnUrl={Uri.EscapeDataString(returnUrl)}&mode={Uri.EscapeDataString(mode)}",
+        IconUrl = $"/auth/icons/{provider}",
+        Url = $"/auth/go/{provider}?returnUrl={Uri.EscapeDataString(returnUrl)}&mode={Uri.EscapeDataString(mode)}",
     }).ToList();
     return Results.Ok(new LoginSourcesResponse { Sources = sources });
 });
@@ -126,11 +126,13 @@ loginRoutes.MapGet("/callback", async (HttpContext ctx, OAuthStateStore states, 
         if (saved.Mode.StartsWith("link:", StringComparison.Ordinal)) {
             var targetUserId = Guid.Parse(saved.Mode["link:".Length..]);
             var linkOutcome = await resolver.TryLinkAsync(targetUserId, "authentik", token.Sub, token.DiscordId, token.Username, token.Avatar, ctx.RequestAborted);
-            var linkFlag = linkOutcome.Conflict ? "linkConflict=1" : linkOutcome.Linked ? "linked=ok" : "linkError=1";
+            var sourceOutcomes = await resolver.SyncSourceIdentitiesAsync(targetUserId, token.PerSourceIds, token.Username, token.Avatar, ctx.RequestAborted);
+            var linkFlag = Program.ComputeLinkFlag(linkOutcome, sourceOutcomes);
             return Results.Redirect(Program.AppendQuery(saved.ReturnUrl, linkFlag));
         }
 
         var resolved = await resolver.ResolveAsync("authentik", token.Sub, token.DiscordId, token.Username, token.Avatar, ctx.RequestAborted);
+        await Program.TrySyncSourceIdentitiesAsync(resolver, resolved.UserId, token, ctx.RequestAborted);
         loginCode = await codes.IssueAsync(resolved.UserId, resolved.IsNew, ctx.RequestAborted);
         if (sessionOptions is not null) {
             var issuedAt = DateTimeOffset.UtcNow;
@@ -148,7 +150,7 @@ loginRoutes.MapGet("/callback", async (HttpContext ctx, OAuthStateStore states, 
                     HttpOnly = true,
                     Secure = true,
                     SameSite = SameSiteMode.Lax,
-                    Path = "/login",
+                    Path = "/auth",
                     Expires = issuedAt + sessionOptions.Ttl,
                 });
         }
@@ -238,7 +240,7 @@ loginRoutes.MapGet("/logout", async (HttpContext ctx) => {
 
     if (sessionOptions is not null)
         SessionIssuer.ClearCookie(ctx.Response, sessionOptions);
-    ctx.Response.Cookies.Delete(Program.IdHintCookie, new CookieOptions { Path = "/login" });
+    ctx.Response.Cookies.Delete(Program.IdHintCookie, new CookieOptions { Path = "/auth" });
 
     var configManager = ctx.RequestServices.GetService<ConfigurationManager<OpenIdConnectConfiguration>>();
     if (configManager is not null) {
@@ -256,7 +258,7 @@ loginRoutes.MapGet("/logout", async (HttpContext ctx) => {
 
 if (profileEnabled) {
     ProfileRoutes.Map(app, sessionOptions!, avatarStorageDir!, app.Services.GetRequiredService<RevocationStore>(),
-        app.Services.GetRequiredService<ProfileService>(), app.Services.GetRequiredService<UserQueries>());
+        app.Services.GetRequiredService<ProfileService>(), app.Services.GetRequiredService<UserQueries>(), authentikAuthority);
 
     app.MapGet("/profile/link/{provider}/start", async (HttpContext ctx, string provider, OAuthStateStore states) => {
         var userId = await ProfileAuth.TryGetUserIdAsync(ctx, sessionOptions!, app.Services.GetRequiredService<RevocationStore>().IsRevokedAsync, ctx.RequestAborted);
@@ -274,7 +276,22 @@ if (profileEnabled) {
         return Results.Redirect(authorizeUrl);
     });
 
-    app.MapGet("/login/relink/{provider}", async (HttpContext ctx, string provider, OAuthStateStore states) => {
+    app.MapGet("/profile/sync", async (HttpContext ctx, OAuthStateStore states) => {
+        var userId = await ProfileAuth.TryGetUserIdAsync(ctx, sessionOptions!, app.Services.GetRequiredService<RevocationStore>().IsRevokedAsync, ctx.RequestAborted);
+        if (userId is null) return Results.Unauthorized();
+
+        var returnUrl = ctx.Request.Query["returnUrl"].ToString();
+        var syncApp = Program.ResolveApp(returnUrl, appConfigs);
+        if (syncApp is null) return Results.BadRequest("returnUrl not allowed");
+
+        var (query, state, verifier) = syncApp.OAuth.BuildAuthParams();
+        await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}", ctx.RequestAborted);
+
+        var authorizeUrl = $"{syncApp.OAuth.Authority}/application/o/authorize/?{query}";
+        return Results.Redirect(authorizeUrl);
+    });
+
+    app.MapGet("/auth/relink/{provider}", async (HttpContext ctx, string provider, OAuthStateStore states) => {
         var userId = await ProfileAuth.TryGetUserIdAsync(ctx, sessionOptions!, app.Services.GetRequiredService<RevocationStore>().IsRevokedAsync, ctx.RequestAborted);
         if (userId is null) return Results.Unauthorized();
 
@@ -310,7 +327,7 @@ if (profileEnabled) {
         return Results.Redirect(Program.BuildRelinkLogoutUrl(endSessionUrl, idTokenHint, continueUrl, flowUrl));
     });
 
-    app.MapGet("/login/relink/continue", (HttpContext ctx) => {
+    app.MapGet("/auth/relink/continue", (HttpContext ctx) => {
         var target = ctx.Request.Query["state"].ToString();
         return Program.IsAllowedRelinkTarget(target, authentikAuthority!, Program.KnownProviders)
             ? Results.Redirect(target)
@@ -319,7 +336,7 @@ if (profileEnabled) {
 }
 
 app.Use(async (ctx, next) => {
-    if (ctx.Request.Path.StartsWithSegments("/login") || ctx.Request.Path.StartsWithSegments("/synckit-login.js")
+    if (ctx.Request.Path.StartsWithSegments("/auth") || ctx.Request.Path.StartsWithSegments("/synckit-login.js")
         || ctx.Request.Path.StartsWithSegments("/profile") || ctx.Request.Path.StartsWithSegments("/avatars")) {
         await next();
         return;
@@ -401,6 +418,23 @@ public partial class Program {
     public const string IdHintCookie = "synckit_idhint";
 
     public static readonly string[] KnownProviders = ["discord", "google", "microsoft", "github"];
+
+    public static async Task TrySyncSourceIdentitiesAsync(
+        IdentityResolver resolver, Guid userId, AuthentikTokenResult token, CancellationToken ct) {
+        try {
+            await resolver.SyncSourceIdentitiesAsync(userId, token.PerSourceIds, token.Username, token.Avatar, ct);
+        } catch (Exception exc) when (exc is not OperationCanceledException) {
+            Console.Error.WriteLine($"source identity sync failed for {userId}: {exc.Message}");
+        }
+    }
+
+    public static string ComputeLinkFlag(LinkOutcome authentikOutcome, IReadOnlyList<(string Provider, LinkOutcome Outcome)> sourceOutcomes) {
+        var conflict = sourceOutcomes.FirstOrDefault(o => o.Outcome.Conflict);
+        if (conflict.Provider is not null) return $"linkConflict={conflict.Provider}";
+        if (authentikOutcome.Conflict) return "linkConflict=authentik";
+        if (authentikOutcome.Linked || sourceOutcomes.Any(o => o.Outcome.Linked)) return "linked=ok";
+        return "linkError=1";
+    }
 
     public static string BuildEndSessionUrl(string endSessionEndpoint, string? idTokenHint, string? returnUrl) {
         var url = endSessionEndpoint;
