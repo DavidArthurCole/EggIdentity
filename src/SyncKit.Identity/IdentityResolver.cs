@@ -4,7 +4,7 @@ using SyncKit.Contract;
 namespace SyncKit.Identity;
 
 public sealed record ResolveResult(Guid UserId, string Role, string? DiscordId, bool IsNew);
-public sealed record LinkOutcome(bool Linked, bool Conflict, string? ConflictUsername, DateTimeOffset? ConflictCreatedAt);
+public sealed record LinkOutcome(bool Linked, bool Conflict, string? ConflictUsername, DateTimeOffset? ConflictCreatedAt, bool AlreadyLinked = false);
 
 public sealed class IdentityResolver(NpgsqlDataSource dataSource, AdminAllowlist allowlist) {
     public async Task<ResolveResult> ResolveAsync(
@@ -83,18 +83,26 @@ public sealed class IdentityResolver(NpgsqlDataSource dataSource, AdminAllowlist
             return new LinkOutcome(Linked: false, Conflict: true, ownerUsername, ownerCreatedAt);
         }
 
-        await using (var cmd = new NpgsqlCommand(
-            """
-            INSERT INTO identities (user_id, provider, subject, username, avatar)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (provider, subject) DO UPDATE SET username = EXCLUDED.username, avatar = EXCLUDED.avatar
-            """, conn)) {
+        if (await LookupOtherSubjectAsync(conn, userId, provider, subject, ct)) {
+            await tx.CommitAsync(ct);
+            return new LinkOutcome(Linked: false, Conflict: false, null, null, AlreadyLinked: true);
+        }
+
+        try {
+            await using var cmd = new NpgsqlCommand(
+                """
+                INSERT INTO identities (user_id, provider, subject, username, avatar)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (provider, subject) DO UPDATE SET username = EXCLUDED.username, avatar = EXCLUDED.avatar
+                """, conn);
             cmd.Parameters.AddWithValue(userId);
             cmd.Parameters.AddWithValue(provider);
             cmd.Parameters.AddWithValue(subject);
             cmd.Parameters.AddWithValue((object?)username ?? DBNull.Value);
             cmd.Parameters.AddWithValue((object?)avatar ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync(ct);
+        } catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation) {
+            return new LinkOutcome(Linked: false, Conflict: false, null, null, AlreadyLinked: true);
         }
 
         if (!string.IsNullOrEmpty(discordId)) {
@@ -128,6 +136,15 @@ public sealed class IdentityResolver(NpgsqlDataSource dataSource, AdminAllowlist
         cmd.Parameters.AddWithValue(subject);
         var result = await cmd.ExecuteScalarAsync(ct);
         return result is Guid g ? g : null;
+    }
+
+    private static async Task<bool> LookupOtherSubjectAsync(NpgsqlConnection conn, Guid userId, string provider, string subject, CancellationToken ct) {
+        await using var cmd = new NpgsqlCommand(
+            "SELECT 1 FROM identities WHERE user_id = $1 AND provider = $2 AND subject != $3", conn);
+        cmd.Parameters.AddWithValue(userId);
+        cmd.Parameters.AddWithValue(provider);
+        cmd.Parameters.AddWithValue(subject);
+        return await cmd.ExecuteScalarAsync(ct) is not null;
     }
 
     private static async Task<Guid?> LookupByDiscordIdAsync(NpgsqlConnection conn, string discordId, CancellationToken ct) {

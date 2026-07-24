@@ -432,6 +432,9 @@ public partial class Program {
         var conflict = sourceOutcomes.FirstOrDefault(o => o.Outcome.Conflict);
         if (conflict.Provider is not null) return $"linkConflict={conflict.Provider}";
         if (authentikOutcome.Conflict) return "linkConflict=authentik";
+        var rejected = sourceOutcomes.FirstOrDefault(o => o.Outcome.AlreadyLinked);
+        if (rejected.Provider is not null) return $"linkRejected={rejected.Provider}";
+        if (authentikOutcome.AlreadyLinked) return "linkRejected=authentik";
         if (authentikOutcome.Linked || sourceOutcomes.Any(o => o.Outcome.Linked)) return "linked=ok";
         return "linkError=1";
     }
