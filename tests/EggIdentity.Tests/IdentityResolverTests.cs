@@ -162,8 +162,9 @@ public class IdentityResolverTests {
 
         var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, CancellationToken.None);
 
-        Assert.Equal(3, results.Count);
-        Assert.All(results, r => Assert.True(r.Outcome.Linked));
+        Assert.Equal(4, results.Count);
+        Assert.True(results.Single(r => r.Provider == "microsoft").Outcome.NotAvailable);
+        Assert.All(results.Where(r => r.Provider != "microsoft"), r => Assert.True(r.Outcome.Linked));
         var discordResolved = await resolver.ResolveAsync("discord", "sync-discord-1", null, "syncer", null, CancellationToken.None);
         var githubResolved = await resolver.ResolveAsync("github", "sync-github-1", null, "syncer", null, CancellationToken.None);
         Assert.Equal(owner.UserId, discordResolved.UserId);
@@ -194,7 +195,7 @@ public class IdentityResolverTests {
     }
 
     [Fact]
-    public async Task SyncSourceIdentitiesAsync_AllNullClaims_ReturnsEmptyResults() {
+    public async Task SyncSourceIdentitiesAsync_AllNullClaims_ReportsNotAvailable() {
         if (string.IsNullOrEmpty(ConnString)) return;
         await using var db = await MakeDbAsync();
         var resolver = MakeResolver(db);
@@ -204,7 +205,8 @@ public class IdentityResolverTests {
 
         var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, CancellationToken.None);
 
-        Assert.Empty(results);
+        Assert.Equal(2, results.Count);
+        Assert.All(results, r => Assert.True(r.Outcome.NotAvailable));
     }
 
     [Fact]

@@ -84,46 +84,95 @@ public class LoginRoutesTests {
     private static readonly LinkOutcome Linked = new(Linked: true, Conflict: false, null, null);
     private static readonly LinkOutcome NotLinked = new(Linked: false, Conflict: false, null, null);
     private static readonly LinkOutcome Conflicted = new(Linked: false, Conflict: true, "someone-else", null);
+    private static readonly LinkOutcome Unavailable = new(Linked: false, Conflict: false, null, null, NotAvailable: true);
 
     [Fact]
     public void ComputeLinkFlag_AllSucceed_ReturnsLinkedOk() {
-        var result = Program.ComputeLinkFlag(Linked, [("discord", Linked), ("google", Linked)]);
+        var result = Program.ComputeLinkFlag(null, Linked, [("discord", Linked), ("google", Linked)]);
 
         Assert.Equal("linked=ok", result);
     }
 
     [Fact]
     public void ComputeLinkFlag_OneSourceConflicts_NamesThatProvider() {
-        var result = Program.ComputeLinkFlag(Linked, [("discord", Linked), ("google", Conflicted)]);
+        var result = Program.ComputeLinkFlag(null, Linked, [("discord", Linked), ("google", Conflicted)]);
 
         Assert.Equal("linkConflict=google", result);
     }
 
     [Fact]
     public void ComputeLinkFlag_AuthentikRowConflicts_NoSourceConflict_NamesAuthentik() {
-        var result = Program.ComputeLinkFlag(Conflicted, [("discord", Linked)]);
+        var result = Program.ComputeLinkFlag(null, Conflicted, [("discord", Linked)]);
 
         Assert.Equal("linkConflict=authentik", result);
     }
 
     [Fact]
     public void ComputeLinkFlag_SourceConflictTakesPriorityOverAuthentikConflict() {
-        var result = Program.ComputeLinkFlag(Conflicted, [("discord", Conflicted)]);
+        var result = Program.ComputeLinkFlag(null, Conflicted, [("discord", Conflicted)]);
 
         Assert.Equal("linkConflict=discord", result);
     }
 
     [Fact]
     public void ComputeLinkFlag_NothingLinkedOrConflicted_ReturnsLinkError() {
-        var result = Program.ComputeLinkFlag(NotLinked, [("discord", NotLinked)]);
+        var result = Program.ComputeLinkFlag(null, NotLinked, [("discord", NotLinked)]);
 
         Assert.Equal("linkError=1", result);
     }
 
     [Fact]
     public void ComputeLinkFlag_EmptySourceOutcomes_FallsBackToAuthentikOutcome() {
-        var result = Program.ComputeLinkFlag(Linked, []);
+        var result = Program.ComputeLinkFlag(null, Linked, []);
 
         Assert.Equal("linked=ok", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_RequestedProviderLinked_ReturnsLinkedOk_EvenIfOthersUnavailable() {
+        var result = Program.ComputeLinkFlag("github", Linked, [("discord", Linked), ("github", Linked), ("microsoft", Unavailable)]);
+
+        Assert.Equal("linked=ok", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_RequestedProviderUnavailable_ReturnsLinkUnavailable_EvenIfOthersLinked() {
+        var result = Program.ComputeLinkFlag("github", Linked, [("discord", Linked), ("github", Unavailable)]);
+
+        Assert.Equal("linkUnavailable=github", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_RequestedProviderConflicts_NamesThatProvider() {
+        var result = Program.ComputeLinkFlag("github", Linked, [("github", Conflicted)]);
+
+        Assert.Equal("linkConflict=github", result);
+    }
+
+    [Fact]
+    public void ComputeLinkFlag_RequestedProviderMissingFromOutcomes_ReturnsLinkError() {
+        var result = Program.ComputeLinkFlag("github", Linked, [("discord", Linked)]);
+
+        Assert.Equal("linkError=1", result);
+    }
+
+    [Fact]
+    public void ParseLinkMode_UserIdOnly_ReturnsNullProvider() {
+        var userId = Guid.NewGuid();
+
+        var result = Program.ParseLinkMode($"link:{userId}");
+
+        Assert.Equal(userId, result.UserId);
+        Assert.Null(result.Provider);
+    }
+
+    [Fact]
+    public void ParseLinkMode_UserIdAndProvider_ReturnsBoth() {
+        var userId = Guid.NewGuid();
+
+        var result = Program.ParseLinkMode($"link:{userId}:github");
+
+        Assert.Equal(userId, result.UserId);
+        Assert.Equal("github", result.Provider);
     }
 }

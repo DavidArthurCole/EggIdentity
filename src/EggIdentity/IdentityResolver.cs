@@ -4,7 +4,7 @@ using EggIdentity.Contract;
 namespace EggIdentity;
 
 public sealed record ResolveResult(Guid UserId, string Role, string? DiscordId, bool IsNew);
-public sealed record LinkOutcome(bool Linked, bool Conflict, string? ConflictUsername, DateTimeOffset? ConflictCreatedAt, bool AlreadyLinked = false);
+public sealed record LinkOutcome(bool Linked, bool Conflict, string? ConflictUsername, DateTimeOffset? ConflictCreatedAt, bool AlreadyLinked = false, bool NotAvailable = false);
 
 public sealed class IdentityResolver(NpgsqlDataSource dataSource, AdminAllowlist allowlist) {
     public async Task<ResolveResult> ResolveAsync(
@@ -123,7 +123,10 @@ public sealed class IdentityResolver(NpgsqlDataSource dataSource, AdminAllowlist
         Guid userId, IReadOnlyDictionary<string, string?> perSourceIds, CancellationToken ct) {
         var results = new List<(string, LinkOutcome)>();
         foreach (var (provider, subject) in perSourceIds) {
-            if (string.IsNullOrEmpty(subject)) continue;
+            if (string.IsNullOrEmpty(subject)) {
+                results.Add((provider, new LinkOutcome(Linked: false, Conflict: false, null, null, NotAvailable: true)));
+                continue;
+            }
             var discordId = provider == "discord" ? subject : null;
             var outcome = await TryLinkAsync(userId, provider, subject, discordId, null, null, ct);
             results.Add((provider, outcome));

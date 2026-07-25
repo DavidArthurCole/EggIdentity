@@ -124,10 +124,10 @@ loginRoutes.MapGet("/callback", async (HttpContext ctx, OAuthStateStore states, 
         var token = await app.OAuth.HandleCallbackAsync(code, saved.CodeVerifier, ctx.RequestAborted);
 
         if (saved.Mode.StartsWith("link:", StringComparison.Ordinal)) {
-            var targetUserId = Guid.Parse(saved.Mode["link:".Length..]);
+            var (targetUserId, requestedProvider) = Program.ParseLinkMode(saved.Mode);
             var linkOutcome = await resolver.TryLinkAsync(targetUserId, "authentik", token.Sub, token.DiscordId, token.Username, token.Avatar, ctx.RequestAborted);
             var sourceOutcomes = await resolver.SyncSourceIdentitiesAsync(targetUserId, token.PerSourceIds, ctx.RequestAborted);
-            var linkFlag = Program.ComputeLinkFlag(linkOutcome, sourceOutcomes);
+            var linkFlag = Program.ComputeLinkFlag(requestedProvider, linkOutcome, sourceOutcomes);
             return Results.Redirect(Program.AppendQuery(saved.ReturnUrl, linkFlag));
         }
 
@@ -270,7 +270,7 @@ if (profileEnabled) {
         if (!Program.KnownProviders.Contains(provider)) return Results.BadRequest("unknown provider");
 
         var (query, state, verifier) = linkApp.OAuth.BuildAuthParams();
-        await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}", ctx.RequestAborted);
+        await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}:{provider}", ctx.RequestAborted);
 
         var authorizeUrl = $"{linkApp.OAuth.Authority}/application/o/authorize/?{query}";
         var flowUrl = Program.BuildFlowUrl(linkApp.OAuth.Authority, provider, authorizeUrl);
@@ -302,7 +302,7 @@ if (profileEnabled) {
         if (!Program.KnownProviders.Contains(provider)) return Results.BadRequest("unknown provider");
 
         var (query, state, verifier) = linkApp.OAuth.BuildAuthParams();
-        await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}", ctx.RequestAborted);
+        await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}:{provider}", ctx.RequestAborted);
 
         var authorizeUrl = $"{linkApp.OAuth.Authority}/application/o/authorize/?{query}";
         var flowUrl = Program.BuildFlowUrl(linkApp.OAuth.Authority, provider, authorizeUrl);
@@ -429,7 +429,26 @@ public partial class Program {
         }
     }
 
-    public static string ComputeLinkFlag(LinkOutcome authentikOutcome, IReadOnlyList<(string Provider, LinkOutcome Outcome)> sourceOutcomes) {
+    public static (Guid UserId, string? Provider) ParseLinkMode(string mode) {
+        var body = mode["link:".Length..];
+        var separator = body.IndexOf(':');
+        return separator < 0
+            ? (Guid.Parse(body), null)
+            : (Guid.Parse(body[..separator]), body[(separator + 1)..]);
+    }
+
+    public static string ComputeLinkFlag(string? requestedProvider, LinkOutcome authentikOutcome, IReadOnlyList<(string Provider, LinkOutcome Outcome)> sourceOutcomes) {
+        if (requestedProvider is not null) {
+            var requested = sourceOutcomes.FirstOrDefault(o => o.Provider == requestedProvider);
+            if (requested.Provider is not null) {
+                if (requested.Outcome.Conflict) return $"linkConflict={requestedProvider}";
+                if (requested.Outcome.NotAvailable) return $"linkUnavailable={requestedProvider}";
+                if (requested.Outcome.AlreadyLinked) return $"linkRejected={requestedProvider}";
+                if (requested.Outcome.Linked) return "linked=ok";
+            }
+            return "linkError=1";
+        }
+
         var conflict = sourceOutcomes.FirstOrDefault(o => o.Outcome.Conflict);
         if (conflict.Provider is not null) return $"linkConflict={conflict.Provider}";
         if (authentikOutcome.Conflict) return "linkConflict=authentik";
