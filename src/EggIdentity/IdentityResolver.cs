@@ -93,7 +93,9 @@ public sealed class IdentityResolver(NpgsqlDataSource dataSource, AdminAllowlist
                 """
                 INSERT INTO identities (user_id, provider, subject, username, avatar)
                 VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (provider, subject) DO UPDATE SET username = EXCLUDED.username, avatar = EXCLUDED.avatar
+                ON CONFLICT (provider, subject) DO UPDATE SET
+                    username = COALESCE(EXCLUDED.username, identities.username),
+                    avatar = COALESCE(EXCLUDED.avatar, identities.avatar)
                 """, conn);
             cmd.Parameters.AddWithValue(userId);
             cmd.Parameters.AddWithValue(provider);
@@ -118,12 +120,12 @@ public sealed class IdentityResolver(NpgsqlDataSource dataSource, AdminAllowlist
     }
 
     public async Task<IReadOnlyList<(string Provider, LinkOutcome Outcome)>> SyncSourceIdentitiesAsync(
-        Guid userId, IReadOnlyDictionary<string, string?> perSourceIds, string? username, string? avatar, CancellationToken ct) {
+        Guid userId, IReadOnlyDictionary<string, string?> perSourceIds, CancellationToken ct) {
         var results = new List<(string, LinkOutcome)>();
         foreach (var (provider, subject) in perSourceIds) {
             if (string.IsNullOrEmpty(subject)) continue;
             var discordId = provider == "discord" ? subject : null;
-            var outcome = await TryLinkAsync(userId, provider, subject, discordId, username, avatar, ct);
+            var outcome = await TryLinkAsync(userId, provider, subject, discordId, null, null, ct);
             results.Add((provider, outcome));
         }
         return results;

@@ -160,7 +160,7 @@ public class IdentityResolverTests {
             ["github"] = "sync-github-1",
         };
 
-        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, "syncer", null, CancellationToken.None);
+        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, CancellationToken.None);
 
         Assert.Equal(3, results.Count);
         Assert.All(results, r => Assert.True(r.Outcome.Linked));
@@ -183,7 +183,7 @@ public class IdentityResolverTests {
             ["google"] = "sync-taken-google-1",
         };
 
-        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, "syncer2", null, CancellationToken.None);
+        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, CancellationToken.None);
 
         var googleOutcome = results.Single(r => r.Provider == "google").Outcome;
         var discordOutcome = results.Single(r => r.Provider == "discord").Outcome;
@@ -202,8 +202,26 @@ public class IdentityResolverTests {
         var owner = await resolver.ResolveAsync("authentik", "sync-sub-3", null, "syncer3", null, CancellationToken.None);
         var perSourceIds = new Dictionary<string, string?> { ["discord"] = null, ["google"] = null };
 
-        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, "syncer3", null, CancellationToken.None);
+        var results = await resolver.SyncSourceIdentitiesAsync(owner.UserId, perSourceIds, CancellationToken.None);
 
         Assert.Empty(results);
+    }
+
+    [Fact]
+    public async Task SyncSourceIdentitiesAsync_RepeatedSync_DoesNotOverwriteOtherIdentitiesUsername() {
+        if (string.IsNullOrEmpty(ConnString)) return;
+        await using var db = await MakeDbAsync();
+        var resolver = MakeResolver(db);
+        var profiles = new ProfileService(db);
+
+        var owner = await resolver.ResolveAsync("authentik", "sync-sub-4", null, "first-name", null, CancellationToken.None);
+        await resolver.TryLinkAsync(owner.UserId, "discord", "sync-discord-4", "sync-discord-4", "discord-own-name", null, CancellationToken.None);
+
+        await resolver.SyncSourceIdentitiesAsync(
+            owner.UserId, new Dictionary<string, string?> { ["google"] = "sync-google-4" }, CancellationToken.None);
+
+        var discordIdentity = (await profiles.ListIdentitiesAsync(owner.UserId, CancellationToken.None))
+            .Single(i => i.Provider == "discord");
+        Assert.Equal("discord-own-name", discordIdentity.Username);
     }
 }

@@ -126,7 +126,7 @@ loginRoutes.MapGet("/callback", async (HttpContext ctx, OAuthStateStore states, 
         if (saved.Mode.StartsWith("link:", StringComparison.Ordinal)) {
             var targetUserId = Guid.Parse(saved.Mode["link:".Length..]);
             var linkOutcome = await resolver.TryLinkAsync(targetUserId, "authentik", token.Sub, token.DiscordId, token.Username, token.Avatar, ctx.RequestAborted);
-            var sourceOutcomes = await resolver.SyncSourceIdentitiesAsync(targetUserId, token.PerSourceIds, token.Username, token.Avatar, ctx.RequestAborted);
+            var sourceOutcomes = await resolver.SyncSourceIdentitiesAsync(targetUserId, token.PerSourceIds, ctx.RequestAborted);
             var linkFlag = Program.ComputeLinkFlag(linkOutcome, sourceOutcomes);
             return Results.Redirect(Program.AppendQuery(saved.ReturnUrl, linkFlag));
         }
@@ -423,7 +423,7 @@ public partial class Program {
     public static async Task TrySyncSourceIdentitiesAsync(
         IdentityResolver resolver, Guid userId, AuthentikTokenResult token, CancellationToken ct) {
         try {
-            await resolver.SyncSourceIdentitiesAsync(userId, token.PerSourceIds, token.Username, token.Avatar, ct);
+            await resolver.SyncSourceIdentitiesAsync(userId, token.PerSourceIds, ct);
         } catch (Exception exc) when (exc is not OperationCanceledException) {
             Console.Error.WriteLine($"source identity sync failed for {userId}: {exc.Message}");
         }
