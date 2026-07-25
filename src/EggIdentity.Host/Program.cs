@@ -201,7 +201,8 @@ loginRoutes.MapPost("/backchannel-logout", async (HttpContext ctx, RevocationSto
     OpenIdConnectConfiguration discovery;
     try {
         discovery = await configManager.GetConfigurationAsync(ctx.RequestAborted);
-    } catch (Exception) {
+    } catch (Exception exc) {
+        Console.Error.WriteLine($"backchannel-logout: {exc}");
         return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
     }
 
