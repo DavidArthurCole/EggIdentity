@@ -74,14 +74,23 @@ public sealed class AuthentikOAuth(string authority, string clientId, string cli
 
         return new AuthentikTokenResult(
             Sub: sub,
-            DiscordId: root.TryGetProperty("discord_id", out var did) ? did.GetString() : null,
-            GoogleId: root.TryGetProperty("google_id", out var gid) ? gid.GetString() : null,
-            MicrosoftId: root.TryGetProperty("microsoft_id", out var mid) ? mid.GetString() : null,
-            GitHubId: root.TryGetProperty("github_id", out var hid) ? hid.GetString() : null,
+            DiscordId: ReadClaimAsString(root, "discord_id"),
+            GoogleId: ReadClaimAsString(root, "google_id"),
+            MicrosoftId: ReadClaimAsString(root, "microsoft_id"),
+            GitHubId: ReadClaimAsString(root, "github_id"),
             Username: root.TryGetProperty("preferred_username", out var un) ? un.GetString() : null,
             Avatar: root.TryGetProperty("picture", out var av) ? av.GetString() : null,
             Sid: sid,
             IdToken: idToken);
+    }
+
+    private static string? ReadClaimAsString(JsonElement root, string propertyName) {
+        if (!root.TryGetProperty(propertyName, out var el)) return null;
+        return el.ValueKind switch {
+            JsonValueKind.String => el.GetString(),
+            JsonValueKind.Number => el.GetRawText(),
+            _ => null,
+        };
     }
 
     public static string? ReadSessionIdFromIdToken(string? idToken) {
