@@ -3,3 +3,4 @@ obj/
 artifacts/
 publish/
 .vscode/
+*.trx

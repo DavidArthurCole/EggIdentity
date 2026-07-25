@@ -273,7 +273,8 @@ if (profileEnabled) {
         await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}", ctx.RequestAborted);
 
         var authorizeUrl = $"{linkApp.OAuth.Authority}/application/o/authorize/?{query}";
-        return Results.Redirect(authorizeUrl);
+        var flowUrl = Program.BuildFlowUrl(linkApp.OAuth.Authority, provider, authorizeUrl);
+        return Results.Redirect(flowUrl);
     });
 
     app.MapGet("/profile/sync", async (HttpContext ctx, OAuthStateStore states) => {
