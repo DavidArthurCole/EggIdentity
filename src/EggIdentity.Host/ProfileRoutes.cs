@@ -7,11 +7,8 @@ namespace EggIdentity.Host;
 public static class ProfileRoutes {
     public static void Map(
         WebApplication app, SessionCookieOptions sessionOptions, string avatarStorageDir,
-        RevocationStore revocations, ProfileService profiles, UserQueries users, string? authentikAuthority) {
+        RevocationStore revocations, ProfileService profiles, UserQueries users) {
         Func<string, CancellationToken, Task<bool>> isRevoked = revocations.IsRevokedAsync;
-        var authentikSettingsUrl = string.IsNullOrEmpty(authentikAuthority)
-            ? null
-            : $"{authentikAuthority.TrimEnd('/')}/if/user/#/settings;page-sources";
 
         var profileRoutes = app.MapGroup("/profile");
 
@@ -36,7 +33,6 @@ public static class ProfileRoutes {
                         Avatar = i.Avatar,
                         LinkedAt = i.LinkedAt,
                     })],
-                AuthentikSettingsUrl = authentikSettingsUrl,
             });
         });
 

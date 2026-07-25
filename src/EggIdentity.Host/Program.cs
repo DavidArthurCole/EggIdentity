@@ -154,7 +154,9 @@ loginRoutes.MapGet("/callback", async (HttpContext ctx, OAuthStateStore states, 
                     Expires = issuedAt + sessionOptions.Ttl,
                 });
         }
-    } catch (Exception) {
+    } catch (Exception exc) {
+        Console.Error.WriteLine($"{saved.Mode}: {exc}");
+
         if (saved.Mode.StartsWith("link:", StringComparison.Ordinal))
             return Results.Redirect(Program.AppendQuery(saved.ReturnUrl, "linkError=1"));
 
@@ -258,7 +260,7 @@ loginRoutes.MapGet("/logout", async (HttpContext ctx) => {
 
 if (profileEnabled) {
     ProfileRoutes.Map(app, sessionOptions!, avatarStorageDir!, app.Services.GetRequiredService<RevocationStore>(),
-        app.Services.GetRequiredService<ProfileService>(), app.Services.GetRequiredService<UserQueries>(), authentikAuthority);
+        app.Services.GetRequiredService<ProfileService>(), app.Services.GetRequiredService<UserQueries>());
 
     app.MapGet("/profile/link/{provider}/start", async (HttpContext ctx, string provider, OAuthStateStore states) => {
         var userId = await ProfileAuth.TryGetUserIdAsync(ctx, sessionOptions!, app.Services.GetRequiredService<RevocationStore>().IsRevokedAsync, ctx.RequestAborted);
@@ -275,21 +277,6 @@ if (profileEnabled) {
         var authorizeUrl = $"{linkApp.OAuth.Authority}/application/o/authorize/?{query}";
         var flowUrl = Program.BuildFlowUrl(linkApp.OAuth.Authority, provider, authorizeUrl);
         return Results.Redirect(flowUrl);
-    });
-
-    app.MapGet("/profile/sync", async (HttpContext ctx, OAuthStateStore states) => {
-        var userId = await ProfileAuth.TryGetUserIdAsync(ctx, sessionOptions!, app.Services.GetRequiredService<RevocationStore>().IsRevokedAsync, ctx.RequestAborted);
-        if (userId is null) return Results.Unauthorized();
-
-        var returnUrl = ctx.Request.Query["returnUrl"].ToString();
-        var syncApp = Program.ResolveApp(returnUrl, appConfigs);
-        if (syncApp is null) return Results.BadRequest("returnUrl not allowed");
-
-        var (query, state, verifier) = syncApp.OAuth.BuildAuthParams();
-        await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}", ctx.RequestAborted);
-
-        var authorizeUrl = $"{syncApp.OAuth.Authority}/application/o/authorize/?{query}";
-        return Results.Redirect(authorizeUrl);
     });
 
     app.MapGet("/auth/relink/{provider}", async (HttpContext ctx, string provider, OAuthStateStore states) => {

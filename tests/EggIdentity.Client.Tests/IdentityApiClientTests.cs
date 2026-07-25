@@ -111,15 +111,6 @@ public class IdentityApiClientTests {
     }
 
     [Fact]
-    public void SyncUrl_BuildsRelativeUrl_WithReturnUrl() {
-        var (client, _) = MakeClient(new HttpResponseMessage(HttpStatusCode.OK));
-
-        var url = client.SyncUrl("https://app.example.com/settings");
-
-        Assert.Equal("/profile/sync?returnUrl=https%3A%2F%2Fapp.example.com%2Fsettings", url);
-    }
-
-    [Fact]
     public async Task UnlinkIdentityAsync_PostsToUnlinkRoute() {
         var (client, handler) = MakeClient(new HttpResponseMessage(HttpStatusCode.NoContent));
 

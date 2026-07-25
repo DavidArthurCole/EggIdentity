@@ -76,9 +76,6 @@ public sealed class IdentityApiClient(HttpClient http) {
     public string StartRelinkUrl(string provider, string returnUrl) =>
         $"/auth/relink/{provider}?returnUrl={Uri.EscapeDataString(returnUrl)}";
 
-    public string SyncUrl(string returnUrl) =>
-        $"/profile/sync?returnUrl={Uri.EscapeDataString(returnUrl)}";
-
     public string IconUrl(string provider) => $"/auth/icons/{provider}";
 
     public async Task<bool> UnlinkIdentityAsync(string sessionToken, string provider, string subject, CancellationToken ct) {

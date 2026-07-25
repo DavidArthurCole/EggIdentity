@@ -96,7 +96,3 @@
 .skp-link-provider .skp-icon { width: var(--skp-glyph-size, 18px); height: var(--skp-glyph-size, 18px); object-fit: contain; }
 .skp-link-provider:hover { background: var(--skp-row-bg-hover, rgba(127, 127, 127, 0.08)); }
 .skp-link-provider-linked { opacity: var(--skp-linked-opacity, 0.6); }
-
-.skp-sync-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; font-size: var(--skp-link-btn-size, 0.8rem); }
-.skp-sync-link, .skp-authentik-link { color: var(--skp-accent, #5865f2); text-decoration: none; }
-.skp-sync-link:hover, .skp-authentik-link:hover { text-decoration: underline; }
