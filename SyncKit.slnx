@@ -15,6 +15,7 @@
     <Project Path="src/SyncKit.Identity.Tools/SyncKit.Identity.Tools.csproj" />
     <Project Path="src/SyncKit.Metrics/SyncKit.Metrics.csproj" />
     <Project Path="src/SyncKit.Metrics.AdminUi/SyncKit.Metrics.AdminUi.csproj" />
+    <Project Path="src/SyncKit.Styles/SyncKit.Styles.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SyncKit.Agent.Tests/SyncKit.Agent.Tests.csproj" />

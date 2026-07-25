@@ -1,0 +1,60 @@
+name: nuget-publish
+
+on:
+  workflow_call:
+    inputs:
+      pack-targets:
+        required: true
+        type: string
+      dotnet-version:
+        type: string
+        default: "10.0.x"
+      packages-auth:
+        type: boolean
+        default: false
+    secrets:
+      PACKAGES_PAT:
+        required: false
+
+jobs:
+  pack-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Authenticate GitHub Packages
+        if: inputs.packages-auth
+        run: |
+          dotnet nuget update source github \
+            --username ${{ github.repository_owner }} \
+            --password ${{ secrets.PACKAGES_PAT }} \
+            --store-password-in-clear-text \
+            --configfile nuget.config
+
+      - name: Pack
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          dotnet new sln -n pack-targets -o pack-targets-sln
+          while IFS= read -r proj; do
+            [ -z "$proj" ] && continue
+            dotnet sln pack-targets-sln/pack-targets.slnx add "$proj"
+          done <<< "${{ inputs.pack-targets }}"
+          dotnet pack pack-targets-sln/pack-targets.slnx -c Release -p:Version="$VERSION" -o nupkgs
+
+      - name: Push to GitHub Packages
+        run: |
+          dotnet nuget push "nupkgs/*.nupkg" \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key "${{ github.token }}" \
+            --skip-duplicate

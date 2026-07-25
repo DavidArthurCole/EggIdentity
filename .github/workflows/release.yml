@@ -10,11 +10,8 @@ permissions:
   actions: write
 
 jobs:
-  # Pack the SyncKit.* libraries and publish them to GitHub Packages. The Agent,
-  # Identity.Host and Identity.Tools projects are IsPackable=false, so only the
-  # consumable libs ship. Version comes from the pushed tag (e.g. tag v0.2.0-preview.1).
   pack:
-    uses: DavidArthurCole/EggBasket/.github/workflows/nuget-publish.yml@master
+    uses: ./.github/workflows/nuget-publish.yml
     with:
       dotnet-version: "10.0.x"
       pack-targets: |
@@ -30,21 +27,18 @@ jobs:
         src/SyncKit.Identity.AdminUi/SyncKit.Identity.AdminUi.csproj
         src/SyncKit.Metrics/SyncKit.Metrics.csproj
         src/SyncKit.Metrics.AdminUi/SyncKit.Metrics.AdminUi.csproj
+        src/SyncKit.Styles/SyncKit.Styles.csproj
 
-  # Build+push the identity host image. Context is repo root since the Dockerfile
-  # needs the whole solution for its ProjectReferences.
   docker-identity-host:
-    uses: DavidArthurCole/EggBasket/.github/workflows/docker-publish.yml@master
+    uses: ./.github/workflows/docker-publish.yml
     with:
       image-suffix: "-identity"
       context: .
       dockerfile: src/SyncKit.Identity.Host/Dockerfile
       cache-scope: identity-host
 
-  # Build+push the deploy-agent image. Same shape as docker-identity-host, context is
-  # repo root since the Dockerfile needs the whole solution for its ProjectReferences.
   docker-agent:
-    uses: DavidArthurCole/EggBasket/.github/workflows/docker-publish.yml@master
+    uses: ./.github/workflows/docker-publish.yml
     with:
       image-suffix: "-agent"
       context: .

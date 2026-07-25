@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-test:
-    uses: DavidArthurCole/EggBasket/.github/workflows/dotnet-ci.yml@master
+    uses: ./.github/workflows/dotnet-ci.yml
     with:
       solution: SyncKit.slnx
       dotnet-version: "10.0.x"
