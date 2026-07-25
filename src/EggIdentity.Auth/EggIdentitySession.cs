@@ -1,0 +1,89 @@
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using EggIdentity.Client;
+
+namespace EggIdentity.Auth;
+
+public static class EggIdentitySessionDefaults {
+    public const string Scheme = "EggIdentitySession";
+}
+
+public sealed class EggIdentitySessionOptions : AuthenticationSchemeOptions {
+    public SessionCookieOptions Cookie { get; set; } = null!;
+    public Func<ClaimsPrincipal, HttpContext, CancellationToken, Task>? OnValidated { get; set; }
+}
+
+public sealed class EggIdentitySessionHandler(
+    IOptionsMonitor<EggIdentitySessionOptions> options,
+    ILoggerFactory logger,
+    UrlEncoder encoder,
+    TimeProvider clock,
+    SessionRevocationCache revocations)
+    : AuthenticationHandler<EggIdentitySessionOptions>(options, logger, encoder) {
+
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync() {
+        var cookie = Options.Cookie;
+        if (!Request.Cookies.TryGetValue(cookie.CookieName, out var token) || string.IsNullOrEmpty(token))
+            return AuthenticateResult.NoResult();
+
+        var principal = SessionToken.Validate(cookie, token, clock.GetUtcNow());
+        if (principal is null)
+            return AuthenticateResult.Fail("invalid session token");
+
+        var sid = principal.FindFirstValue(SessionClaims.SessionId);
+        if (!string.IsNullOrEmpty(sid)) {
+            var identity = Context.RequestServices.GetService<IdentityApiClient>();
+            if (identity is not null) {
+                bool revoked;
+                try {
+                    revoked = await revocations.IsRevokedAsync(
+                        sid, ct => identity.IsRevokedAsync(sid, ct), Context.RequestAborted);
+                } catch (Exception ex) {
+                    Logger.LogWarning(ex, "EggIdentity session revocation check failed; treating session as live");
+                    revoked = false;
+                }
+                if (revoked)
+                    return AuthenticateResult.Fail("session revoked");
+            }
+        }
+
+        if (Options.OnValidated is not null) {
+            try {
+                await Options.OnValidated(principal, Context, Context.RequestAborted);
+            } catch (Exception ex) {
+                Logger.LogWarning(ex, "EggIdentity OnValidated hook threw");
+            }
+        }
+
+        if (SessionToken.ShouldRenew(principal, cookie, clock.GetUtcNow())) {
+            var renewed = SessionToken.Renew(cookie, principal, clock.GetUtcNow());
+            SessionIssuer.WriteCookie(Response, cookie, renewed, clock.GetUtcNow() + cookie.Ttl);
+        }
+
+        return AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme.Name));
+    }
+}
+
+public static class EggIdentitySessionExtensions {
+    public static AuthenticationBuilder AddEggIdentitySession(
+        this AuthenticationBuilder builder,
+        SessionCookieOptions cookie,
+        Func<ClaimsPrincipal, HttpContext, CancellationToken, Task>? onValidated = null,
+        TimeSpan? revocationCacheTtl = null,
+        string scheme = EggIdentitySessionDefaults.Scheme) {
+        var ttl = revocationCacheTtl ?? TimeSpan.FromSeconds(30);
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.TryAddSingleton(sp =>
+            new SessionRevocationCache(sp.GetRequiredService<TimeProvider>(), ttl));
+        return builder.AddScheme<EggIdentitySessionOptions, EggIdentitySessionHandler>(scheme, o => {
+            o.Cookie = cookie;
+            o.OnValidated = onValidated;
+        });
+    }
+}

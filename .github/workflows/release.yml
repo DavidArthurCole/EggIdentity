@@ -15,26 +15,26 @@ jobs:
     with:
       dotnet-version: "10.0.x"
       pack-targets: |
-        src/SyncKit.Contract/SyncKit.Contract.csproj
-        src/SyncKit.Db/SyncKit.Db.csproj
-        src/SyncKit.Auth/SyncKit.Auth.csproj
-        src/SyncKit.Bot/SyncKit.Bot.csproj
-        src/SyncKit.Bot.AdminUi/SyncKit.Bot.AdminUi.csproj
-        src/SyncKit.Core/SyncKit.Core.csproj
-        src/SyncKit.Config/SyncKit.Config.csproj
-        src/SyncKit.Identity/SyncKit.Identity.csproj
-        src/SyncKit.Identity.Client/SyncKit.Identity.Client.csproj
-        src/SyncKit.Identity.AdminUi/SyncKit.Identity.AdminUi.csproj
-        src/SyncKit.Metrics/SyncKit.Metrics.csproj
-        src/SyncKit.Metrics.AdminUi/SyncKit.Metrics.AdminUi.csproj
-        src/SyncKit.Styles/SyncKit.Styles.csproj
+        src/EggIdentity.Contract/EggIdentity.Contract.csproj
+        src/EggIdentity.Db/EggIdentity.Db.csproj
+        src/EggIdentity.Auth/EggIdentity.Auth.csproj
+        src/EggIdentity.Bot/EggIdentity.Bot.csproj
+        src/EggIdentity.Bot.AdminUi/EggIdentity.Bot.AdminUi.csproj
+        src/EggIdentity.Core/EggIdentity.Core.csproj
+        src/EggIdentity.Config/EggIdentity.Config.csproj
+        src/EggIdentity/EggIdentity.csproj
+        src/EggIdentity.Client/EggIdentity.Client.csproj
+        src/EggIdentity.AdminUi/EggIdentity.AdminUi.csproj
+        src/EggIdentity.Metrics/EggIdentity.Metrics.csproj
+        src/EggIdentity.Metrics.AdminUi/EggIdentity.Metrics.AdminUi.csproj
+        src/EggIdentity.Styles/EggIdentity.Styles.csproj
 
   docker-identity-host:
     uses: ./.github/workflows/docker-publish.yml
     with:
-      image-suffix: "-identity"
+      image-suffix: ""
       context: .
-      dockerfile: src/SyncKit.Identity.Host/Dockerfile
+      dockerfile: src/EggIdentity.Host/Dockerfile
       cache-scope: identity-host
 
   docker-agent:
@@ -42,5 +42,5 @@ jobs:
     with:
       image-suffix: "-agent"
       context: .
-      dockerfile: src/SyncKit.Agent/Dockerfile
+      dockerfile: src/EggIdentity.Agent/Dockerfile
       cache-scope: agent
