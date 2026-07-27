@@ -12,6 +12,9 @@ on:
       packages-auth:
         type: boolean
         default: false
+    secrets:
+      PACKAGES_PAT:
+        required: false
 
 jobs:
   pack-push:
@@ -34,7 +37,7 @@ jobs:
         run: |
           dotnet nuget update source github \
             --username ${{ github.repository_owner }} \
-            --password ${{ github.token }} \
+            --password ${{ secrets.PACKAGES_PAT }} \
             --store-password-in-clear-text \
             --configfile nuget.config
 

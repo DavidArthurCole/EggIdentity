@@ -30,6 +30,9 @@ on:
       cache-scope:
         type: string
         default: "default"
+    secrets:
+      PACKAGES_PAT:
+        required: false
 
 jobs:
   image:
@@ -73,7 +76,7 @@ jobs:
             APP_VERSION=${{ steps.meta.outputs.version }}
             ${{ inputs.build-args }}
             ${{ inputs.version-build-arg != '' && format('{0}={1}', inputs.version-build-arg, steps.meta.outputs.version) || '' }}
-          secrets: ${{ inputs.needs-pat && format('github_token={0}', github.token) || '' }}
+          secrets: ${{ inputs.needs-pat && format('github_token={0}', secrets.PACKAGES_PAT) || '' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
