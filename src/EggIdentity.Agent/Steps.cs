@@ -167,6 +167,8 @@ public sealed class AppCallback : IStep {
 }
 
 public sealed class PortainerUpdateService : IStep {
+    private static readonly Lock StackLock = new();
+
     public string UrlEnv { get; set; } = "PORTAINER_API_URL";
     public string KeyEnv { get; set; } = "PORTAINER_API_KEY";
     public string StackIdEnv { get; set; } = "PORTAINER_STACK_ID";
@@ -181,6 +183,7 @@ public sealed class PortainerUpdateService : IStep {
         if (baseUrl == "" || key == "" || stackId == "" || endpointId == "")
             return $"portainer-update-stack: missing env ({UrlEnv}/{KeyEnv}/{StackIdEnv}/{EndpointIdEnv})";
 
+        lock (StackLock) {
         try {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
             http.DefaultRequestHeaders.Add("X-API-Key", key);
@@ -220,6 +223,7 @@ public sealed class PortainerUpdateService : IStep {
                 return $"portainer-update-stack: PUT {(int)putResp.StatusCode}: {Trunc(putBody)}";
             return null;
         } catch (Exception e) { return $"portainer-update-stack: {e.Message}"; }
+        }
     }
 
     private static string Trunc(string s) => s.Length <= 300 ? s : s[..300];
