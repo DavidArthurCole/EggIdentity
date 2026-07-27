@@ -1,14 +1,16 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
+using System.Text;
+using EggIdentity;
+using EggIdentity.Auth;
+using EggIdentity.Contract;
+using EggIdentity.Db;
+using EggIdentity.Host;
+using EggIdentity.Models;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
-using EggIdentity.Auth;
-using EggIdentity.Contract;
-using EggIdentity.Db;
-using EggIdentity;
-using EggIdentity.Host;
-using EggIdentity.Models;
 
 var connString = Environment.GetEnvironmentVariable("IDENTITY_DB_CONNECTION")
     ?? throw new InvalidOperationException("IDENTITY_DB_CONNECTION is required");
@@ -18,6 +20,7 @@ var port = Environment.GetEnvironmentVariable("IDENTITY_API_PORT") ?? "8090";
 var adminIds = Environment.GetEnvironmentVariable("IDENTITY_ADMIN_DISCORD_IDS");
 var sweepIntervalMinutes = int.TryParse(Environment.GetEnvironmentVariable("IDENTITY_LOGIN_SWEEP_INTERVAL_MINUTES"), out var m) ? m : 10;
 
+var localLoginKey = Environment.GetEnvironmentVariable("EGGIDENTITY_LOCAL_KEY");
 var authentikAuthority = Environment.GetEnvironmentVariable("AUTHENTIK_AUTHORITY");
 var authentikAppsDir = Environment.GetEnvironmentVariable("AUTHENTIK_APPS_DIR");
 var loginWidgetEnabled = !string.IsNullOrEmpty(authentikAuthority) && !string.IsNullOrEmpty(authentikAppsDir);
@@ -93,14 +96,21 @@ loginRoutes.MapGet("/go/{provider}", async (HttpContext ctx, string provider, OA
     var returnUrl = ctx.Request.Query["returnUrl"].ToString();
     var app = Program.ResolveApp(returnUrl, appConfigs);
     if (app is null) return Results.BadRequest("returnUrl not allowed");
-    if (!Program.KnownProviders.Contains(provider)) return Results.BadRequest("unknown provider");
+
+    var isLocal = provider == "local";
+    if (isLocal && !Program.IsValidLocalKey(localLoginKey, ctx.Request.Headers["X-Local-Login-Key"]))
+        return Results.NotFound();
+    if (!isLocal && !Program.KnownProviders.Contains(provider))
+        return Results.BadRequest("unknown provider");
 
     var mode = Program.ValidateMode(ctx.Request.Query["mode"].ToString());
     var (query, state, verifier) = app.OAuth.BuildAuthParams();
     await states.SaveAsync(state, verifier, returnUrl, mode, ctx.RequestAborted);
 
     var authorizeUrl = $"{app.OAuth.Authority}/application/o/authorize/?{query}";
-    var flowUrl = Program.BuildFlowUrl(app.OAuth.Authority, provider, authorizeUrl);
+    var flowUrl = isLocal
+        ? $"{app.OAuth.Authority}/if/flow/default-authentication-flow/?next={Uri.EscapeDataString(authorizeUrl)}"
+        : Program.BuildFlowUrl(app.OAuth.Authority, provider, authorizeUrl);
     return Results.Redirect(flowUrl);
 });
 
@@ -407,6 +417,13 @@ public partial class Program {
     public const string IdHintCookie = "eggidentity_idhint";
 
     public static readonly string[] KnownProviders = ["discord", "google", "microsoft", "github"];
+
+    public static bool IsValidLocalKey(string? configured, string? presented) {
+        if (string.IsNullOrEmpty(configured) || string.IsNullOrEmpty(presented)) return false;
+        var configuredHash = SHA256.HashData(Encoding.UTF8.GetBytes(configured));
+        var presentedHash = SHA256.HashData(Encoding.UTF8.GetBytes(presented));
+        return CryptographicOperations.FixedTimeEquals(configuredHash, presentedHash);
+    }
 
     public static async Task TrySyncSourceIdentitiesAsync(
         IdentityResolver resolver, Guid userId, AuthentikTokenResult token, CancellationToken ct) {
