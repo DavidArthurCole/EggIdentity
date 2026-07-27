@@ -107,7 +107,7 @@ loginRoutes.MapGet("/go/{provider}", async (HttpContext ctx, string provider, OA
     var (query, state, verifier) = app.OAuth.BuildAuthParams();
     await states.SaveAsync(state, verifier, returnUrl, mode, ctx.RequestAborted);
 
-    var authorizeUrl = $"{app.OAuth.Authority}/application/o/authorize/?{query}";
+    var authorizeUrl = $"/application/o/authorize/?{query}";
     var flowUrl = Program.BuildFlowUrl(app.OAuth.Authority, provider, authorizeUrl);
     return Results.Redirect(flowUrl);
 });
@@ -283,7 +283,7 @@ if (profileEnabled) {
         var (query, state, verifier) = linkApp.OAuth.BuildAuthParams();
         await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}:{provider}", ctx.RequestAborted);
 
-        var authorizeUrl = $"{linkApp.OAuth.Authority}/application/o/authorize/?{query}";
+        var authorizeUrl = $"/application/o/authorize/?{query}";
         var flowUrl = Program.BuildFlowUrl(linkApp.OAuth.Authority, provider, authorizeUrl);
         return Results.Redirect(flowUrl);
     });
@@ -300,7 +300,7 @@ if (profileEnabled) {
         var (query, state, verifier) = linkApp.OAuth.BuildAuthParams();
         await states.SaveAsync(state, verifier, returnUrl, $"link:{userId}:{provider}", ctx.RequestAborted);
 
-        var authorizeUrl = $"{linkApp.OAuth.Authority}/application/o/authorize/?{query}";
+        var authorizeUrl = $"/application/o/authorize/?{query}";
         var flowUrl = Program.BuildFlowUrl(linkApp.OAuth.Authority, provider, authorizeUrl);
 
         var idTokenHint = ctx.Request.Cookies.TryGetValue(Program.IdHintCookie, out var hint) ? hint : null;
