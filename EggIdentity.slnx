@@ -16,6 +16,7 @@
     <Project Path="src/EggIdentity.Metrics/EggIdentity.Metrics.csproj" />
     <Project Path="src/EggIdentity.Metrics.AdminUi/EggIdentity.Metrics.AdminUi.csproj" />
     <Project Path="src/EggIdentity.Styles/EggIdentity.Styles.csproj" />
+    <Project Path="src/EggIdentity.StyleVerify/EggIdentity.StyleVerify.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EggIdentity.Agent.Tests/EggIdentity.Agent.Tests.csproj" />
@@ -29,5 +30,7 @@
     <Project Path="tests/EggIdentity.Host.Tests/EggIdentity.Host.Tests.csproj" />
     <Project Path="tests/EggIdentity.Tools.Tests/EggIdentity.Tools.Tests.csproj" />
     <Project Path="tests/EggIdentity.Metrics.Tests/EggIdentity.Metrics.Tests.csproj" />
+    <Project Path="tests/EggIdentity.Styles.Tests/EggIdentity.Styles.Tests.csproj" />
+    <Project Path="tests/EggIdentity.StyleVerify.Tests/EggIdentity.StyleVerify.Tests.csproj" />
   </Folder>
 </Solution>

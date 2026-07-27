@@ -28,6 +28,7 @@ jobs:
         src/EggIdentity.Metrics/EggIdentity.Metrics.csproj
         src/EggIdentity.Metrics.AdminUi/EggIdentity.Metrics.AdminUi.csproj
         src/EggIdentity.Styles/EggIdentity.Styles.csproj
+        src/EggIdentity.StyleVerify/EggIdentity.StyleVerify.csproj
 
   docker-identity-host:
     uses: ./.github/workflows/docker-publish.yml
