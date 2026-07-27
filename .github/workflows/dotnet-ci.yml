@@ -18,9 +18,6 @@ on:
       razor-include:
         type: string
         default: "src/**/*.razor"
-    secrets:
-      PACKAGES_PAT:
-        required: false
 
 jobs:
   build-test:
@@ -43,7 +40,7 @@ jobs:
         run: |
           dotnet nuget update source github \
             --username ${{ github.repository_owner }} \
-            --password ${{ secrets.PACKAGES_PAT }} \
+            --password ${{ github.token }} \
             --store-password-in-clear-text \
             --configfile nuget.config
 
