@@ -108,9 +108,7 @@ loginRoutes.MapGet("/go/{provider}", async (HttpContext ctx, string provider, OA
     await states.SaveAsync(state, verifier, returnUrl, mode, ctx.RequestAborted);
 
     var authorizeUrl = $"{app.OAuth.Authority}/application/o/authorize/?{query}";
-    var flowUrl = isLocal
-        ? $"{app.OAuth.Authority}/if/flow/default-authentication-flow/?next={Uri.EscapeDataString(authorizeUrl)}"
-        : Program.BuildFlowUrl(app.OAuth.Authority, provider, authorizeUrl);
+    var flowUrl = Program.BuildFlowUrl(app.OAuth.Authority, provider, authorizeUrl);
     return Results.Redirect(flowUrl);
 });
 

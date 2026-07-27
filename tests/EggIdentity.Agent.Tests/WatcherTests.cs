@@ -4,7 +4,7 @@ using EggIdentity.Contract;
 namespace EggIdentity.Agent.Tests;
 
 public class WatcherTests {
-    private static Watcher New() => new("t", TimeSpan.FromMinutes(1), "http://bot", "secret", () => (new DeployResponse(), true));
+    private static Watcher New() => new("t", "http://bot", "secret");
 
     [Fact]
     public void Decide_AlreadyUpToDate_Silent() =>

@@ -6,6 +6,7 @@ public sealed class AgentConfig {
     public string Name { get; init; } = "";
     public string Repo { get; init; } = "";
     public string RepoUrl { get; init; } = "";
+    public string SecretEnv { get; init; } = "";
     public IReadOnlyList<IStep> Steps { get; init; } = [];
     public WatchConfig? Watch { get; init; }
 
@@ -24,21 +25,14 @@ public sealed class AgentConfig {
 
         WatchConfig? watch = null;
         if (TryGet(root, "watch") is YamlMappingNode w) {
-            var intervalStr = Scalar(TryGet(w, "interval"));
-            if (string.IsNullOrEmpty(intervalStr))
-                throw new FormatException("watch.interval is required");
-            var interval = ParseDuration(intervalStr);
-            if (interval <= TimeSpan.Zero)
-                throw new FormatException($"watch.interval must be positive, got {intervalStr}");
-            watch = new WatchConfig(
-                interval,
-                Scalar(TryGet(w, "notify_bot_url")) ?? "");
+            watch = new WatchConfig(Scalar(TryGet(w, "notify_bot_url")) ?? "");
         }
 
         return new AgentConfig {
             Name = Scalar(TryGet(root, "name")) ?? "",
             Repo = Scalar(TryGet(root, "repo")) ?? "",
             RepoUrl = Scalar(TryGet(root, "repo_url")) ?? "",
+            SecretEnv = Scalar(TryGet(root, "secret_env")) ?? "",
             Steps = steps,
             Watch = watch,
         };
@@ -106,6 +100,4 @@ public sealed class AgentConfig {
     }
 }
 
-public sealed record WatchConfig(
-    TimeSpan Interval,
-    string NotifyBotUrl = "");
+public sealed record WatchConfig(string NotifyBotUrl = "");

@@ -4,40 +4,26 @@ using EggIdentity.Contract;
 
 namespace EggIdentity.Agent;
 
-public sealed class Watcher(string name, TimeSpan interval, string notifyBotUrl, string notifySecret, Func<(DeployResponse, bool)> tryRun) {
+public sealed class Watcher(string name, string notifyBotUrl, string notifySecret) {
     private string _lastFail = "";
 
     internal Func<DeployResponse, int> Send = null!;
 
-    public async Task RunAsync(CancellationToken ct) {
-        using var timer = new PeriodicTimer(interval);
-        try {
-            while (await timer.WaitForNextTickAsync(ct))
-                Tick();
-        } catch (OperationCanceledException) { /* shutdown */ }
-    }
-
-    internal void Tick() {
-        Console.WriteLine($"watcher: tick: {name}: checking for updates");
-        var (res, ran) = tryRun();
-        if (!ran) {
-            Console.WriteLine("watcher: tick: skipped, deploy already in progress");
-            return;
-        }
-        Console.WriteLine($"watcher: tick: result ok={res.Ok} alreadyUpToDate={res.AlreadyUpToDate} from={res.FromHash} to={res.ToHash}");
+    internal void HandleResult(DeployResponse res) {
+        Console.WriteLine($"watcher: {name}: tick: result ok={res.Ok} alreadyUpToDate={res.AlreadyUpToDate} from={res.FromHash} to={res.ToHash}");
         var toSend = Decide(res);
         if (toSend is null) {
-            Console.WriteLine("watcher: tick: no notification needed");
+            Console.WriteLine($"watcher: {name}: tick: no notification needed");
             return;
         }
         if (string.IsNullOrEmpty(notifyBotUrl)) {
-            Console.WriteLine("watcher: tick: notification needed but notify disabled (no notify_bot_url), staying silent");
+            Console.WriteLine($"watcher: {name}: tick: notification needed but notify disabled (no notify_bot_url), staying silent");
             return;
         }
         try {
             var status = (Send ?? PostToBot)(toSend);
-            Console.WriteLine($"watcher: tick: notified bot -> {status}");
-        } catch (Exception e) { Console.Error.WriteLine($"watcher: notify: {e.Message}"); }
+            Console.WriteLine($"watcher: {name}: tick: notified bot -> {status}");
+        } catch (Exception e) { Console.Error.WriteLine($"watcher: {name}: notify: {e.Message}"); }
     }
 
     private int PostToBot(DeployResponse res) {

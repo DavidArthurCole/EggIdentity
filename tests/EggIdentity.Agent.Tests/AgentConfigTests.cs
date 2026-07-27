@@ -12,7 +12,6 @@ public class AgentConfigTests {
           - docker-pull: { ref: ghcr.io/x/y:latest, container: y }
           - portainer-update-stack
         watch:
-          interval: 1m
           notify_bot_url: https://bot.example/internal/deploy-notify
         """;
         var cfg = AgentConfig.Parse(yaml);
@@ -23,9 +22,12 @@ public class AgentConfigTests {
         Assert.IsType<PortainerUpdateService>(cfg.Steps[1]);
         Assert.Equal("ghcr.io/x/y:latest", ((DockerPull)cfg.Steps[0]).Ref);
         Assert.NotNull(cfg.Watch);
-        Assert.Equal(TimeSpan.FromMinutes(1), cfg.Watch!.Interval);
         Assert.Equal("https://bot.example/internal/deploy-notify", cfg.Watch.NotifyBotUrl);
     }
+
+    [Fact]
+    public void Parse_SecretEnv_Decoded() =>
+        Assert.Equal("MY_SECRET", AgentConfig.Parse("name: t\nsecret_env: MY_SECRET\n").SecretEnv);
 
     [Fact]
     public void Parse_PortainerStepAsMap_OverridesEnvNames() {
