@@ -49,8 +49,9 @@ public sealed class DockerPull : IStep {
 
         (c.ToHash, c.ToUrl) = ImageIdent(c, Ref);
 
-        if (output.Contains("Image is up to date") && ContainerMatchesImage(c))
-            c.ShortCircuit = true;
+        var upToDate = output.Contains("Image is up to date") && ContainerMatchesImage(c);
+        c.ShortCircuit = c.DockerPullSeen ? c.ShortCircuit && upToDate : upToDate;
+        c.DockerPullSeen = true;
         return null;
     }
 

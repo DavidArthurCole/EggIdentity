@@ -13,6 +13,7 @@ public sealed class RunContext {
     public string? FromUrl { get; set; }
     public string? ToUrl { get; set; }
     public bool ShortCircuit { get; set; }
+    public bool DockerPullSeen { get; set; }
 }
 
 public interface IStep {
