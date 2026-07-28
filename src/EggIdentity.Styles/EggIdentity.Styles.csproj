@@ -11,4 +11,8 @@
     <PackageReference Include="MonorailCss" Version="0.1.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="EggIdentity.Styles.Tests" />
+  </ItemGroup>
+
 </Project>
