@@ -175,4 +175,25 @@ public class LoginRoutesTests {
         Assert.Equal(userId, result.UserId);
         Assert.Equal("github", result.Provider);
     }
+
+    [Fact]
+    public void ShouldThrottleSponsorRefresh_RecentSync_ReturnsTrue() {
+        var now = DateTimeOffset.UtcNow;
+        var lastSyncedAt = now.AddSeconds(-10);
+
+        Assert.True(Program.ShouldThrottleSponsorRefresh(lastSyncedAt, now));
+    }
+
+    [Fact]
+    public void ShouldThrottleSponsorRefresh_OldSync_ReturnsFalse() {
+        var now = DateTimeOffset.UtcNow;
+        var lastSyncedAt = now.AddSeconds(-31);
+
+        Assert.False(Program.ShouldThrottleSponsorRefresh(lastSyncedAt, now));
+    }
+
+    [Fact]
+    public void ShouldThrottleSponsorRefresh_NoPriorSync_ReturnsFalse() {
+        Assert.False(Program.ShouldThrottleSponsorRefresh(null, DateTimeOffset.UtcNow));
+    }
 }

@@ -30,6 +30,8 @@ var appConfigs = loginWidgetEnabled
 var sessionOptions = SessionCookieOptions.FromEnvironment();
 var avatarStorageDir = Environment.GetEnvironmentVariable("AVATAR_STORAGE_DIR");
 var profileEnabled = loginWidgetEnabled && sessionOptions is not null && !string.IsNullOrEmpty(avatarStorageDir);
+var sponsorConfig = SponsorConfig.FromEnvironment();
+var sponsorEnabled = sponsorConfig is not null && sessionOptions is not null;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls($"http://*:{port}");
@@ -44,6 +46,15 @@ builder.Services.AddSingleton<ProfileService>();
 builder.Services.AddSingleton<LoginCodeStore>();
 builder.Services.AddSingleton<OAuthStateStore>();
 builder.Services.AddHttpClient();
+if (sponsorConfig is not null) {
+    builder.Services.AddSingleton(sponsorConfig);
+    builder.Services.AddSingleton<GitHubSponsorStatusStore>();
+    builder.Services.AddSingleton<IGitHubSponsorClient>(sp =>
+        new GitHubSponsorClient(sp.GetRequiredService<IHttpClientFactory>(), sponsorConfig.GitHubPat, sponsorConfig.GitHubTarget));
+    builder.Services.AddSingleton<IDiscordRoleClient>(sp =>
+        new DiscordRoleClient(sp.GetRequiredService<IHttpClientFactory>(), sponsorConfig.DiscordBotToken));
+    builder.Services.AddSingleton<SponsorSyncService>();
+}
 if (loginWidgetEnabled)
     builder.Services.AddSingleton(sp => new IconCache(sp.GetRequiredService<IHttpClientFactory>(), authentikAuthority!));
 
@@ -61,6 +72,8 @@ await using (var conn = await dataSource.OpenConnectionAsync())
 
 var sweeper = new ExpiredRowSweeper(dataSource, TimeSpan.FromMinutes(sweepIntervalMinutes));
 _ = sweeper.RunAsync(app.Lifetime.ApplicationStopping);
+
+var sponsorSyncOrNull = sponsorEnabled ? app.Services.GetRequiredService<SponsorSyncService>() : null;
 
 var loginRoutes = app.MapGroup("/auth");
 
@@ -136,12 +149,30 @@ loginRoutes.MapGet("/callback", async (HttpContext ctx, OAuthStateStore states, 
             var linkOutcome = await resolver.TryLinkAsync(targetUserId, "authentik", token.Sub, token.DiscordId, token.Username, token.Avatar, ctx.RequestAborted);
             var sourceOutcomes = await resolver.SyncSourceIdentitiesAsync(targetUserId, token.PerSourceIds, ctx.RequestAborted);
             var linkFlag = Program.ComputeLinkFlag(requestedProvider, linkOutcome, sourceOutcomes);
+
+            if (sponsorSyncOrNull is not null && requestedProvider == "github" && linkFlag == "linked=ok") {
+                try {
+                    await sponsorSyncOrNull.SyncAsync(targetUserId, ctx.RequestAborted);
+                } catch (Exception exc) when (exc is not OperationCanceledException) {
+                    Console.Error.WriteLine($"sponsor sync failed for {targetUserId}: {exc.Message}");
+                }
+            }
+
             return Results.Redirect(Program.AppendQuery(saved.ReturnUrl, linkFlag));
         }
 
         var resolved = await resolver.ResolveAsync("authentik", token.Sub, token.DiscordId, token.Username, token.Avatar, ctx.RequestAborted);
         await Program.TrySyncSourceIdentitiesAsync(resolver, resolved.UserId, token, ctx.RequestAborted);
         loginCode = await codes.IssueAsync(resolved.UserId, resolved.IsNew, ctx.RequestAborted);
+
+        if (sponsorSyncOrNull is not null) {
+            try {
+                await sponsorSyncOrNull.ReconcileRoleAsync(resolved.UserId, ctx.RequestAborted);
+            } catch (Exception exc) when (exc is not OperationCanceledException) {
+                Console.Error.WriteLine($"sponsor reconcile failed for {resolved.UserId}: {exc.Message}");
+            }
+        }
+
         if (sessionOptions is not null) {
             var issuedAt = DateTimeOffset.UtcNow;
             var user = await users.GetAsync(resolved.UserId, ctx.RequestAborted);
@@ -332,9 +363,67 @@ if (profileEnabled) {
     });
 }
 
+if (sponsorEnabled) {
+    var sponsorSync = sponsorSyncOrNull!;
+    var sponsorStore = app.Services.GetRequiredService<GitHubSponsorStatusStore>();
+    var sponsorRevocations = app.Services.GetRequiredService<RevocationStore>();
+
+    app.MapPost("/profile/sponsor/refresh", async (HttpContext ctx) => {
+        var userId = await ProfileAuth.TryGetUserIdAsync(ctx, sessionOptions!, sponsorRevocations.IsRevokedAsync, ctx.RequestAborted);
+        if (userId is null) return Results.Unauthorized();
+
+        var existing = await sponsorStore.GetAsync(userId.Value, ctx.RequestAborted);
+        var now = DateTimeOffset.UtcNow;
+        if (Program.ShouldThrottleSponsorRefresh(existing?.LastSyncedAt, now)) {
+            ctx.Response.Headers.RetryAfter = "30";
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        EggIdentity.Models.GitHubSponsorStatus? status;
+        try {
+            status = await sponsorSync.SyncAsync(userId.Value, ctx.RequestAborted);
+        } catch (Exception exc) when (exc is not OperationCanceledException) {
+            Console.Error.WriteLine($"sponsor refresh failed for {userId}: {exc.Message}");
+            return Results.StatusCode(StatusCodes.Status502BadGateway);
+        }
+        if (status is null) return Results.BadRequest("no linked github account");
+
+        return Results.Ok(new SponsorStatusResponse {
+            IsSponsor = status.IsSponsor,
+            LastSyncedAt = status.LastSyncedAt,
+        });
+    });
+
+    app.MapPost("/webhooks/github/sponsorship", async (HttpContext ctx) => {
+        using var bodyStream = new MemoryStream();
+        await ctx.Request.Body.CopyToAsync(bodyStream, ctx.RequestAborted);
+        var bodyBytes = bodyStream.ToArray();
+        var bodyText = System.Text.Encoding.UTF8.GetString(bodyBytes);
+
+        var signature = ctx.Request.Headers["X-Hub-Signature-256"].ToString();
+        if (!SponsorWebhook.VerifySignature(sponsorConfig!.GitHubWebhookSecret, bodyBytes, signature))
+            return Results.Unauthorized();
+
+        EggIdentity.Host.SponsorshipWebhookEvent? evt;
+        try {
+            evt = SponsorWebhook.ParsePayload(bodyText);
+        } catch (Exception exc) when (exc is System.Text.Json.JsonException or InvalidOperationException) {
+            return Results.Ok();
+        }
+        if (evt is null) return Results.Ok();
+
+        var isSponsor = SponsorWebhook.ResolveIsSponsor(evt.Action);
+        if (isSponsor is null) return Results.Ok();
+
+        await sponsorSync.ApplyWebhookEventAsync(evt.SponsorSubject, isSponsor.Value, ctx.RequestAborted);
+        return Results.Ok();
+    });
+}
+
 app.Use(async (ctx, next) => {
     if (ctx.Request.Path.StartsWithSegments("/auth") || ctx.Request.Path.StartsWithSegments("/eggidentity-login.js")
-        || ctx.Request.Path.StartsWithSegments("/profile") || ctx.Request.Path.StartsWithSegments("/avatars")) {
+        || ctx.Request.Path.StartsWithSegments("/profile") || ctx.Request.Path.StartsWithSegments("/avatars")
+        || ctx.Request.Path.StartsWithSegments("/webhooks")) {
         await next();
         return;
     }
@@ -422,6 +511,9 @@ public partial class Program {
         var presentedHash = SHA256.HashData(Encoding.UTF8.GetBytes(presented));
         return CryptographicOperations.FixedTimeEquals(configuredHash, presentedHash);
     }
+
+    public static bool ShouldThrottleSponsorRefresh(DateTimeOffset? lastSyncedAt, DateTimeOffset now) =>
+        lastSyncedAt is { } last && now - last < TimeSpan.FromSeconds(30);
 
     public static async Task TrySyncSourceIdentitiesAsync(
         IdentityResolver resolver, Guid userId, AuthentikTokenResult token, CancellationToken ct) {

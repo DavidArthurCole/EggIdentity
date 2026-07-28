@@ -171,3 +171,11 @@ public sealed class AvatarSelectRequest {
     [JsonPropertyName("subject")]
     public string Subject { get; set; } = "";
 }
+
+public sealed class SponsorStatusResponse {
+    [JsonPropertyName("isSponsor")]
+    public bool IsSponsor { get; set; }
+
+    [JsonPropertyName("lastSyncedAt")]
+    public DateTimeOffset? LastSyncedAt { get; set; }
+}
