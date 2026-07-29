@@ -12,5 +12,9 @@ public static class ComponentClasses {
         .AddRange(Popovers.Applies)
         .AddRange(Modals.Applies)
         .AddRange(FloatingBubbles.Applies)
-        .AddRange(FormControls.Applies);
+        .AddRange(FormControls.Applies)
+        .AddRange(DataTables.Applies)
+        .AddRange(Toasts.Applies)
+        .AddRange(Tooltips.Applies)
+        .AddRange(Prose.Applies);
 }

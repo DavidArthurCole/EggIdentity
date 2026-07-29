@@ -1,0 +1,38 @@
+@if (_isOpen && !UseNativeDialog) {
+    <div class="modal-backdrop" @onclick="OnBackdropClick">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            @ChildContent
+        </div>
+    </div>
+}
+@if (_isOpen && UseNativeDialog) {
+    <dialog class="modal-backdrop" open @onclick="OnBackdropClick">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            @ChildContent
+        </div>
+    </dialog>
+}
+
+@code {
+    private bool _isOpen;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool UseNativeDialog { get; set; } = false;
+
+    public void Open() {
+        _isOpen = true;
+        StateHasChanged();
+    }
+
+    public void Close() {
+        _isOpen = false;
+        StateHasChanged();
+    }
+
+    private void OnBackdropClick() {
+        if (CloseOnBackdropClick) {
+            Close();
+        }
+    }
+}

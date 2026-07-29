@@ -17,6 +17,7 @@
     <Project Path="src/EggIdentity.Metrics.AdminUi/EggIdentity.Metrics.AdminUi.csproj" />
     <Project Path="src/EggIdentity.Styles/EggIdentity.Styles.csproj" />
     <Project Path="src/EggIdentity.StyleVerify/EggIdentity.StyleVerify.csproj" />
+    <Project Path="src/EggIdentity.UI/EggIdentity.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EggIdentity.Agent.Tests/EggIdentity.Agent.Tests.csproj" />
