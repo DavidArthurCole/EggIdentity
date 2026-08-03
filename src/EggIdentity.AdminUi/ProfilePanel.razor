@@ -3,26 +3,26 @@
 @implements IDisposable
 
 <section class="skp">
-  @if (_profile is null) {
-    <p class="skp-muted">Loading...</p>
-  } else {
-    var avatarFragment = (AvatarTemplate ?? DefaultAvatarTemplate)(new ProfileAvatarContext(_profile.Avatar, _avatarError, EventCallback.Factory.Create<InputFileChangeEventArgs>(this, OnFileSelected)));
-    @avatarFragment
-    if (ProvidersTemplate is not null) {
-      var providersFragment = ProvidersTemplate(BuildProvidersContext());
-      @providersFragment
+    @if (_profile is null) {
+        <p class="skp-muted">Loading...</p>
     } else {
-      var identitiesFragment = (IdentitiesTemplate ?? DefaultIdentitiesTemplate)(BuildIdentitiesContext());
-      var linkRowFragment = (LinkRowTemplate ?? DefaultLinkRowTemplate)(BuildLinkRowContext());
-      @identitiesFragment
-      @linkRowFragment
+        var avatarFragment = (AvatarTemplate ?? DefaultAvatarTemplate)(new ProfileAvatarContext(_profile.Avatar, _avatarError, EventCallback.Factory.Create<InputFileChangeEventArgs>(this, OnFileSelected)));
+        @avatarFragment
+        if (ProvidersTemplate is not null) {
+            var providersFragment = ProvidersTemplate(BuildProvidersContext());
+            @providersFragment
+        } else {
+            var identitiesFragment = (IdentitiesTemplate ?? DefaultIdentitiesTemplate)(BuildIdentitiesContext());
+            var linkRowFragment = (LinkRowTemplate ?? DefaultLinkRowTemplate)(BuildLinkRowContext());
+            @identitiesFragment
+            @linkRowFragment
+        }
     }
-  }
 </section>
 
 @code {
-    [Parameter, EditorRequired] public string SessionToken { get; set; } = "";
-    [Parameter, EditorRequired] public string ReturnUrl { get; set; } = "";
+    [Parameter] [EditorRequired] public string SessionToken { get; set; } = "";
+    [Parameter] [EditorRequired] public string ReturnUrl { get; set; } = "";
 
     [Parameter] public RenderFragment<ProfileAvatarContext>? AvatarTemplate { get; set; }
     [Parameter] public RenderFragment<ProfileIdentitiesContext>? IdentitiesTemplate { get; set; }
@@ -62,6 +62,7 @@
             _avatarError = "File too large (max 2 MB).";
             return;
         }
+
         await using var stream = file.OpenReadStream(2 * 1024 * 1024);
         var ok = await Identity.UploadAvatarAsync(SessionToken, stream, file.Name, file.ContentType, CancellationToken.None);
         if (!ok) _avatarError = "Upload failed: unsupported file type or too large.";
@@ -106,7 +107,9 @@
         return new ProfileLinkRowContext(items);
     }
 
-    private static string Cap(string s) => char.ToUpperInvariant(s[0]) + s[1..];
+    private static string Cap(string s) {
+        return char.ToUpperInvariant(s[0]) + s[1..];
+    }
 
     private static RenderFragment<ProfileAvatarContext> DefaultAvatarTemplate => ctx => builder => {
         builder.OpenElement(0, "div");
@@ -135,6 +138,7 @@
             builder.AddContent(18, ctx.Error);
             builder.CloseElement();
         }
+
         builder.CloseElement();
     };
 
@@ -145,6 +149,7 @@
             builder.AddContent(2, ctx.Banner);
             builder.CloseElement();
         }
+
         builder.OpenElement(3, "ul");
         builder.AddAttribute(4, "class", "skp-identity-list");
         var seq = 5;
@@ -169,6 +174,7 @@
                 builder.CloseElement();
                 builder.CloseElement();
             }
+
             builder.OpenElement(seq++, "span");
             builder.AddAttribute(seq++, "class", "skp-identity-name");
             builder.AddContent(seq++, item.Identity.Username ?? item.Identity.Subject);
@@ -187,6 +193,7 @@
             builder.CloseElement();
             builder.CloseElement();
         }
+
         builder.CloseElement();
     };
 
@@ -201,6 +208,7 @@
             if (item.Linked) {
                 builder.AddAttribute(seq++, "title", $"Link a different {Cap(item.Provider)} account (signs you out of the identity provider first)");
             }
+
             builder.OpenElement(seq++, "img");
             builder.AddAttribute(seq++, "class", "skp-icon");
             builder.AddAttribute(seq++, "src", Identity.IconUrl(item.Provider));
@@ -211,6 +219,7 @@
             builder.CloseElement();
             builder.CloseElement();
         }
+
         builder.CloseElement();
     };
 
@@ -242,4 +251,5 @@
 
     public void Dispose() {
     }
+
 }

@@ -10,10 +10,7 @@ public sealed record BotConfigValues(
     string? DeployAgentUrl,
     string? DeployAgentSecret,
     string? PostgresConnectionString,
-    string? DashboardChannelId,
-    string? DiscordAdminClientId,
-    string? DiscordAdminClientSecret,
-    string? AdminCallbackUrl);
+    string? DashboardChannelId);
 
 public static class BotConfigLoader {
     public static BotConfigValues Load(string path, Func<string, string?> envFallback) {
@@ -31,10 +28,7 @@ public static class BotConfigLoader {
             Get("DEPLOY_AGENT_URL"),
             Get("DEPLOY_AGENT_SECRET"),
             Get("POSTGRES_CONNECTION_STRING"),
-            Get("DASHBOARD_CHANNEL_ID"),
-            Get("DISCORD_ADMIN_CLIENT_ID"),
-            Get("DISCORD_ADMIN_CLIENT_SECRET"),
-            Get("ADMIN_CALLBACK_URL"));
+            Get("DASHBOARD_CHANNEL_ID"));
     }
 
     private static Dictionary<string, string> ParseDotenv(string text) {

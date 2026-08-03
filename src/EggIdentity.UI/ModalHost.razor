@@ -18,7 +18,7 @@
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
-    [Parameter] public bool UseNativeDialog { get; set; } = false;
+    [Parameter] public bool UseNativeDialog { get; set; }
 
     public void Open() {
         _isOpen = true;
@@ -35,4 +35,5 @@
             Close();
         }
     }
+
 }

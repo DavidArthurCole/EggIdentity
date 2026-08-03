@@ -1,0 +1,26 @@
+@page "/admin"
+@rendermode @(RenderMode.InteractiveServer)
+@using EggIdentity.Auth
+@using EggIdentity.Contract
+
+<PageTitle>EggIdentity admin</PageTitle>
+
+@if (_isAdmin) {
+    <MessageConfigEditor/>
+} else if (_checked) {
+    <p>Admin access required. <a href="/admin/login">Log in</a></p>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    private bool _isAdmin;
+    private bool _checked;
+
+    protected override async Task OnInitializedAsync() {
+        if (AuthStateTask is not null) {
+            var state = await AuthStateTask;
+            _isAdmin = state.User.IsAtLeast(UserRole.Admin);
+        }
+        _checked = true;
+    }
+}

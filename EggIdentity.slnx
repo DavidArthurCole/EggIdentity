@@ -26,6 +26,7 @@
     <Project Path="tests/EggIdentity.Bot.Tests/EggIdentity.Bot.Tests.csproj" />
     <Project Path="tests/EggIdentity.Config.Tests/EggIdentity.Config.Tests.csproj" />
     <Project Path="tests/EggIdentity.Contract.Tests/EggIdentity.Contract.Tests.csproj" />
+    <Project Path="tests/EggIdentity.Core.Tests/EggIdentity.Core.Tests.csproj" />
     <Project Path="tests/EggIdentity.Db.Tests/EggIdentity.Db.Tests.csproj" />
     <Project Path="tests/EggIdentity.Tests/EggIdentity.Tests.csproj" />
     <Project Path="tests/EggIdentity.Client.Tests/EggIdentity.Client.Tests.csproj" />

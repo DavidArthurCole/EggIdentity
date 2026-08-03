@@ -1,77 +1,96 @@
 @rendermode @(RenderMode.InteractiveServer)
 @inject IServiceProvider Services
+@using System.Text
 @implements IAsyncDisposable
 
 <section class="skm">
-  @if (_source is null) {
-    <p class="skm-muted">Metrics source not configured (register an ITrafficSource).</p>
-  } else if (_snap is null) {
-    <p class="skm-muted">Loading…</p>
-  } else {
-    <div class="skm-kpis">
-      <div class="skm-tile">
-        <span class="skm-tile-n">@RequestsHour</span>
-        <span class="skm-tile-l">Requests (1h)</span>
-      </div>
-      <div class="skm-tile">
-        <span class="skm-tile-n">@_snap.Paths.Count</span>
-        <span class="skm-tile-l">Distinct paths</span>
-      </div>
-      <div class="skm-tile">
-        <span class="skm-tile-n">@Limited</span>
-        <span class="skm-tile-l">Limited (429)</span>
-      </div>
-      <div class="skm-tile">
-        <span class="skm-tile-n">@_snap.Buckets.External</span>
-        <span class="skm-tile-l">External</span>
-      </div>
-    </div>
-
-    <svg class="skm-spark" viewBox="0 0 240 40" preserveAspectRatio="none" role="img" aria-label="Requests per minute">
-      <polyline points="@Spark()" fill="none" stroke="currentColor" stroke-width="1.5" />
-    </svg>
-
-    @if (_snap.Buckets.KeysCapped) {
-      <p class="skm-warn">Rollup key cap reached; some paths/IPs are not counted.</p>
-    }
-
-    <div class="skm-tabs">
-      <button class="@TabClass("paths")" @onclick='() => _tab = "paths"'>By endpoint</button>
-      <button class="@TabClass("ips")" @onclick='() => _tab = "ips"'>By IP</button>
-      <button class="@TabClass("recent")" @onclick='() => _tab = "recent"'>Recent</button>
-      <span class="skm-spacer"></span>
-      <button class="skm-refresh" @onclick="LoadAsync">Refresh</button>
-    </div>
-
-    @if (_tab == "paths") {
-      <table class="skm-table">
-        <thead><tr><th>Path</th><th class="skm-num">Count</th></tr></thead>
-        <tbody>
-          @foreach (var p in _snap.Paths) {
-            <tr><td>@p.Path</td><td class="skm-num">@p.Count</td></tr>
-          }
-        </tbody>
-      </table>
-    } else if (_tab == "ips") {
-      <table class="skm-table">
-        <thead><tr><th>IP</th><th class="skm-num">Count</th><th>Last seen (UTC)</th></tr></thead>
-        <tbody>
-          @foreach (var ip in _snap.Ips) {
-            <tr><td>@ip.Ip</td><td class="skm-num">@ip.Count</td><td>@Clock(ip.LastSeenEpochSeconds)</td></tr>
-          }
-        </tbody>
-      </table>
+    @if (_source is null) {
+        <p class="skm-muted">Metrics source not configured (register an ITrafficSource).</p>
+    } else if (_snap is null) {
+        <p class="skm-muted">Loading…</p>
     } else {
-      <table class="skm-table">
-        <thead><tr><th>Time (UTC)</th><th>Method</th><th>Path</th><th class="skm-num">Status</th><th>Bucket</th><th>IP</th></tr></thead>
-        <tbody>
-          @foreach (var r in _snap.Recent) {
-            <tr><td>@Clock(r.AtEpochSeconds)</td><td>@r.Method</td><td>@r.Path</td><td class="skm-num">@r.Status</td><td>@r.Bucket</td><td>@r.Ip</td></tr>
-          }
-        </tbody>
-      </table>
+        <div class="skm-kpis">
+            <div class="skm-tile">
+                <span class="skm-tile-n">@RequestsHour</span>
+                <span class="skm-tile-l">Requests (1h)</span>
+            </div>
+            <div class="skm-tile">
+                <span class="skm-tile-n">@_snap.Paths.Count</span>
+                <span class="skm-tile-l">Distinct paths</span>
+            </div>
+            <div class="skm-tile">
+                <span class="skm-tile-n">@Limited</span>
+                <span class="skm-tile-l">Limited (429)</span>
+            </div>
+            <div class="skm-tile">
+                <span class="skm-tile-n">@_snap.Buckets.External</span>
+                <span class="skm-tile-l">External</span>
+            </div>
+        </div>
+
+        <svg class="skm-spark" viewBox="0 0 240 40" preserveAspectRatio="none" role="img" aria-label="Requests per minute">
+            <polyline points="@Spark()" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+
+        @if (_snap.Buckets.KeysCapped) {
+            <p class="skm-warn">Rollup key cap reached; some paths/IPs are not counted.</p>
+        }
+
+        <div class="skm-tabs">
+            <button class="@TabClass("paths")" @onclick='() => _tab = "paths"'>By endpoint</button>
+            <button class="@TabClass("ips")" @onclick='() => _tab = "ips"'>By IP</button>
+            <button class="@TabClass("recent")" @onclick='() => _tab = "recent"'>Recent</button>
+            <span class="skm-spacer"></span>
+            <button class="skm-refresh" @onclick="LoadAsync">Refresh</button>
+        </div>
+
+        @if (_tab == "paths") {
+            <table class="skm-table">
+                <thead>
+                <tr>
+                    <th>Path</th><th class="skm-num">Count</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var p in _snap.Paths) {
+                    <tr>
+                        <td>@p.Path</td><td class="skm-num">@p.Count</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        } else if (_tab == "ips") {
+            <table class="skm-table">
+                <thead>
+                <tr>
+                    <th>IP</th><th class="skm-num">Count</th><th>Last seen (UTC)</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var ip in _snap.Ips) {
+                    <tr>
+                        <td>@ip.Ip</td><td class="skm-num">@ip.Count</td><td>@Clock(ip.LastSeenEpochSeconds)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        } else {
+            <table class="skm-table">
+                <thead>
+                <tr>
+                    <th>Time (UTC)</th><th>Method</th><th>Path</th><th class="skm-num">Status</th><th>Bucket</th><th>IP</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in _snap.Recent) {
+                    <tr>
+                        <td>@Clock(r.AtEpochSeconds)</td><td>@r.Method</td><td>@r.Path</td><td class="skm-num">@r.Status</td><td>@r.Bucket</td><td>@r.Ip</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
     }
-  }
 </section>
 
 @code {
@@ -98,7 +117,8 @@
         if (_source is null) return;
         try {
             _snap = await _source.GetSnapshotAsync(CancellationToken.None);
-        } catch {
+        }
+        catch {
             _snap = null;
         }
     }
@@ -110,11 +130,14 @@
                 await LoadAsync();
                 await InvokeAsync(StateHasChanged);
             }
-        } catch (OperationCanceledException) {
+        }
+        catch (OperationCanceledException) {
         }
     }
 
-    private string TabClass(string tab) => tab == _tab ? "skm-tab skm-tab-on" : "skm-tab";
+    private string TabClass(string tab) {
+        return tab == _tab ? "skm-tab skm-tab-on" : "skm-tab";
+    }
 
     private string Spark() {
         var mins = _snap!.Minutes;
@@ -122,18 +145,20 @@
         var max = Math.Max(1, mins.Max(m => m.Total));
         const double w = 240, h = 40;
         var step = mins.Count > 1 ? w / (mins.Count - 1) : 0;
-        var sb = new System.Text.StringBuilder();
+        var sb = new StringBuilder();
         for (var i = 0; i < mins.Count; i++) {
             var x = i * step;
-            var y = h - (mins[i].Total / (double)max * h);
+            var y = h - mins[i].Total / (double)max * h;
             if (i > 0) sb.Append(' ');
             sb.Append(x.ToString("0.##", CultureInfo.InvariantCulture)).Append(',').Append(y.ToString("0.##", CultureInfo.InvariantCulture));
         }
+
         return sb.ToString();
     }
 
-    private static string Clock(long epoch) =>
-        DateTimeOffset.FromUnixTimeSeconds(epoch).UtcDateTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+    private static string Clock(long epoch) {
+        return DateTimeOffset.FromUnixTimeSeconds(epoch).UtcDateTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+    }
 
     public async ValueTask DisposeAsync() {
         if (_loopCts is not null) {
@@ -141,4 +166,5 @@
             _loopCts.Dispose();
         }
     }
+
 }

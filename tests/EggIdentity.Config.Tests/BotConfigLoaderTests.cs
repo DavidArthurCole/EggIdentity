@@ -84,30 +84,4 @@ public class BotConfigLoaderTests {
         } finally { File.Delete(path); }
     }
 
-    [Fact]
-    public void Load_AdminOAuthKeys_ReadFromEnvFallback() {
-        var values = BotConfigLoader.Load(
-            Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".env"),
-            key => key switch {
-                "DISCORD_ADMIN_CLIENT_ID" => "client-id-1",
-                "DISCORD_ADMIN_CLIENT_SECRET" => "client-secret-1",
-                "ADMIN_CALLBACK_URL" => "https://example.test/admin/callback",
-                _ => null,
-            });
-
-        Assert.Equal("client-id-1", values.DiscordAdminClientId);
-        Assert.Equal("client-secret-1", values.DiscordAdminClientSecret);
-        Assert.Equal("https://example.test/admin/callback", values.AdminCallbackUrl);
-    }
-
-    [Fact]
-    public void Load_AdminOAuthKeys_NoEnvFallback_AreNull() {
-        var values = BotConfigLoader.Load(
-            Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".env"),
-            _ => null);
-
-        Assert.Null(values.DiscordAdminClientId);
-        Assert.Null(values.DiscordAdminClientSecret);
-        Assert.Null(values.AdminCallbackUrl);
-    }
 }

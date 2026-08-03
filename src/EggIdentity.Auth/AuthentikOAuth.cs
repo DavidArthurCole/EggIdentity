@@ -25,7 +25,7 @@ public sealed class AuthentikOAuth(string authority, string clientId, string cli
     public string CallbackUrl { get; } = callbackUrl;
 
     public (string Query, string State, string CodeVerifier) BuildAuthParams() {
-        var state = DiscordOAuth.RandomHex(16);
+        var state = OAuthCrypto.RandomHex(16);
         var verifier = GenerateCodeVerifier();
         var challenge = ComputeCodeChallenge(verifier);
 
