@@ -21,9 +21,10 @@ public sealed class SessionRevocationCache(TimeProvider clock, TimeSpan liveTtl)
     }
 
     private void Prune(DateTimeOffset now) {
-        foreach (var pair in _entries)
+        foreach (var pair in _entries) {
             if (pair.Value.Expires <= now)
                 _entries.TryRemove(pair.Key, out _);
+        }
     }
 
     private readonly record struct Entry(bool Revoked, DateTimeOffset Expires);

@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v5
         with:
@@ -44,13 +46,12 @@ jobs:
       - name: Pack
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
           dotnet new sln -n pack-targets -o pack-targets-sln
           while IFS= read -r proj; do
             [ -z "$proj" ] && continue
             dotnet sln pack-targets-sln/pack-targets.slnx add "$proj"
           done <<< "${{ inputs.pack-targets }}"
-          dotnet pack pack-targets-sln/pack-targets.slnx -c Release -p:Version="$VERSION" -o nupkgs
+          dotnet pack pack-targets-sln/pack-targets.slnx -c Release -o nupkgs
 
       - name: Push to GitHub Packages
         run: |

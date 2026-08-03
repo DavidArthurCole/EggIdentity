@@ -4,6 +4,7 @@
     <Project Path="src/EggIdentity.Auth/EggIdentity.Auth.csproj" />
     <Project Path="src/EggIdentity.Bot/EggIdentity.Bot.csproj" />
     <Project Path="src/EggIdentity.Bot.AdminUi/EggIdentity.Bot.AdminUi.csproj" />
+    <Project Path="src/EggIdentity.CodeStyle/EggIdentity.CodeStyle.csproj" />
     <Project Path="src/EggIdentity.Config/EggIdentity.Config.csproj" />
     <Project Path="src/EggIdentity.Contract/EggIdentity.Contract.csproj" />
     <Project Path="src/EggIdentity.Core/EggIdentity.Core.csproj" />

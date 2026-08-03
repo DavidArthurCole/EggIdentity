@@ -184,7 +184,7 @@ loginRoutes.MapGet("/callback", async (HttpContext ctx, OAuthStateStore states, 
                 Avatar: user?.Avatar ?? token.Avatar,
                 DiscordId: user?.DiscordId ?? resolved.DiscordId),
                 issuedAt);
-            if (!string.IsNullOrEmpty(token.IdToken))
+            if (!string.IsNullOrEmpty(token.IdToken)) {
                 ctx.Response.Cookies.Append(Program.IdHintCookie, token.IdToken, new CookieOptions {
                     HttpOnly = true,
                     Secure = true,
@@ -192,6 +192,7 @@ loginRoutes.MapGet("/callback", async (HttpContext ctx, OAuthStateStore states, 
                     Path = "/auth",
                     Expires = issuedAt + sessionOptions.Ttl,
                 });
+            }
         }
     } catch (Exception exc) {
         Console.Error.WriteLine($"{saved.Mode}: {exc}");

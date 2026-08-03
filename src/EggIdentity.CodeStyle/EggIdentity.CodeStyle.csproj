@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <PackageId>EggIdentity.CodeStyle</PackageId>
+    <Description>Shared Sonar analyzer defaults for EggIdentity and consumers.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="build/EggIdentity.CodeStyle.props" Pack="true" PackagePath="build/" />
+    <None Include="build/EggIdentity.CodeStyle.globalconfig" Pack="true" PackagePath="build/" />
+  </ItemGroup>
+
+</Project>

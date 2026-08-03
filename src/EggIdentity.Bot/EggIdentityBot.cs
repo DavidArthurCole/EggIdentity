@@ -115,8 +115,9 @@ public sealed class EggIdentityBot : IAsyncDisposable {
         _channelHub = new ChannelHub(guild, channelId, _cfg.Name, store, configStore);
 
         if (!string.IsNullOrEmpty(configOverride?.GithubFeedThreadId) &&
-            ulong.TryParse(configOverride.GithubFeedThreadId, out var githubFeedThreadId))
+            ulong.TryParse(configOverride.GithubFeedThreadId, out var githubFeedThreadId)) {
             await _channelHub.EnsureWebhookForThreadAsync(ThreadKind.GithubFeed, githubFeedThreadId, CancellationToken.None);
+        }
 
         ConfigService = new BotConfigService(_cfg.GuildId, _cfg.Name, _configStore, _stateStore,
             EnsureWebhookForThreadAsync, TeardownWebhookForThreadAsync);
