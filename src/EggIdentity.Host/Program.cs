@@ -466,8 +466,11 @@ app.MapPost("/identity/merge", async (MergeUsersRequest req, IdentityResolver re
     return Results.Ok(new { userId = winner });
 });
 
-app.MapGet("/identity/admin/users", async (UserQueries users, CancellationToken ct) =>
-    Results.Ok((await users.ListAsync(ct)).Select(ToResponse)));
+app.MapGet("/identity/admin/users", async (UserQueries users, CancellationToken ct) => {
+    var list = await users.ListAsync(ct);
+    var providers = await users.ListProvidersAsync(ct);
+    return Results.Ok(list.Select(u => ToResponse(u, providers.GetValueOrDefault(u.UserId) ?? [])));
+});
 
 app.MapPost("/identity/{userId:guid}/role", async (Guid userId, SetRoleRequest req, UserQueries users, CancellationToken ct) => {
     var ok = await users.SetRoleAsync(userId, UserRoles.Parse(req.Role), ct);
@@ -491,12 +494,15 @@ app.MapPost("/identity/redeem", async (RedeemLoginCodeRequest req, LoginCodeStor
 
 app.Run();
 
-static IdentityUserResponse ToResponse(User u) => new() {
+static IdentityUserResponse ToResponse(User u) => ToResponse(u, []);
+
+static IdentityUserResponse ToResponse(User u, List<string> providers) => new() {
     UserId = u.UserId,
     DiscordId = u.DiscordId,
     Username = u.Username,
     Avatar = u.Avatar,
     Role = u.Role,
+    Providers = providers,
     CreatedAt = u.CreatedAt,
     LastLoginAt = u.LastLoginAt,
 };

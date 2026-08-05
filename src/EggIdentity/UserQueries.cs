@@ -27,6 +27,27 @@ public sealed class UserQueries(NpgsqlDataSource dataSource) {
         return results;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, List<string>>> ListProvidersAsync(CancellationToken ct) {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(
+            "SELECT user_id, provider FROM identities WHERE provider <> 'authentik' ORDER BY user_id, provider",
+            conn);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var result = new Dictionary<Guid, List<string>>();
+        while (await reader.ReadAsync(ct)) {
+            var userId = reader.GetGuid(0);
+            var provider = reader.GetString(1);
+            if (!result.TryGetValue(userId, out var list)) {
+                list = [];
+                result[userId] = list;
+            }
+
+            if (!list.Contains(provider)) list.Add(provider);
+        }
+
+        return result;
+    }
+
     public async Task<bool> SetRoleAsync(Guid userId, UserRole role, CancellationToken ct) {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand("UPDATE users SET role = $2 WHERE user_id = $1", conn);

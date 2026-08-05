@@ -50,6 +50,9 @@ public sealed class IdentityUserResponse {
     [JsonPropertyName("role")]
     public string Role { get; set; } = "";
 
+    [JsonPropertyName("providers")]
+    public List<string> Providers { get; set; } = [];
+
     [JsonPropertyName("createdAt")]
     public DateTimeOffset CreatedAt { get; set; }
 
