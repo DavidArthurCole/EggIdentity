@@ -494,15 +494,13 @@ app.MapPost("/identity/redeem", async (RedeemLoginCodeRequest req, LoginCodeStor
 
 app.Run();
 
-static IdentityUserResponse ToResponse(User u) => ToResponse(u, []);
-
-static IdentityUserResponse ToResponse(User u, List<string> providers) => new() {
+static IdentityUserResponse ToResponse(User u, List<string>? providers = null) => new() {
     UserId = u.UserId,
     DiscordId = u.DiscordId,
     Username = u.Username,
     Avatar = u.Avatar,
     Role = u.Role,
-    Providers = providers,
+    Providers = providers ?? [],
     CreatedAt = u.CreatedAt,
     LastLoginAt = u.LastLoginAt,
 };
