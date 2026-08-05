@@ -1,6 +1,6 @@
-using Npgsql;
 using EggIdentity.Contract;
 using EggIdentity.Models;
+using Npgsql;
 
 namespace EggIdentity;
 

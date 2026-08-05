@@ -14,6 +14,7 @@ public sealed class RunContext {
     public string? ToUrl { get; set; }
     public bool ShortCircuit { get; set; }
     public bool DockerPullSeen { get; set; }
+    public string? HeadRevisionFull { get; set; }
 }
 
 public interface IStep {

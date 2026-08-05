@@ -8,6 +8,7 @@ public sealed class AgentConfig {
     public string RepoUrl { get; init; } = "";
     public string SecretEnv { get; init; } = "";
     public IReadOnlyList<IStep> Steps { get; init; } = [];
+    public IReadOnlyList<IStep> FastSteps { get; init; } = [];
     public WatchConfig? Watch { get; init; }
 
     public static AgentConfig Parse(string yaml) {
@@ -23,6 +24,12 @@ public sealed class AgentConfig {
                 steps.Add(DecodeStep(node));
         }
 
+        var fastSteps = new List<IStep>();
+        if (TryGet(root, "fast_steps") is YamlSequenceNode fastSeq) {
+            foreach (var node in fastSeq.Children)
+                fastSteps.Add(DecodeStep(node));
+        }
+
         WatchConfig? watch = null;
         if (TryGet(root, "watch") is YamlMappingNode w) {
             watch = new WatchConfig(Scalar(TryGet(w, "notify_bot_url")) ?? "");
@@ -34,6 +41,7 @@ public sealed class AgentConfig {
             RepoUrl = Scalar(TryGet(root, "repo_url")) ?? "",
             SecretEnv = Scalar(TryGet(root, "secret_env")) ?? "",
             Steps = steps,
+            FastSteps = fastSteps,
             Watch = watch,
         };
     }

@@ -1,6 +1,6 @@
+using EggIdentity.Metrics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using EggIdentity.Metrics;
 
 namespace EggIdentity.Metrics.Tests;
 

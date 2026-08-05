@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Scriban;
 using EggIdentity.Contract;
+using Scriban;
 
 namespace EggIdentity.Bot;
 

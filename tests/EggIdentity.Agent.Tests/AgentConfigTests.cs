@@ -26,6 +26,32 @@ public class AgentConfigTests {
     }
 
     [Fact]
+    public void Parse_FastSteps_Decoded() {
+        const string yaml = """
+        name: eggledger
+        steps:
+          - docker-pull: { ref: ghcr.io/x/y:latest, container: y }
+        fast_steps:
+          - git-pull
+          - docker-build: { tag: ghcr.io/x/y:latest }
+          - portainer-update-stack
+        """;
+        var cfg = AgentConfig.Parse(yaml);
+
+        Assert.Equal(3, cfg.FastSteps.Count);
+        Assert.IsType<GitPull>(cfg.FastSteps[0]);
+        Assert.IsType<DockerBuild>(cfg.FastSteps[1]);
+        Assert.Equal("ghcr.io/x/y:latest", ((DockerBuild)cfg.FastSteps[1]).Tag);
+        Assert.IsType<PortainerUpdateService>(cfg.FastSteps[2]);
+    }
+
+    [Fact]
+    public void Parse_NoFastSteps_DefaultsEmpty() {
+        var cfg = AgentConfig.Parse("name: t\nsteps:\n  - portainer-update-stack\n");
+        Assert.Empty(cfg.FastSteps);
+    }
+
+    [Fact]
     public void Parse_SecretEnv_Decoded() =>
         Assert.Equal("MY_SECRET", AgentConfig.Parse("name: t\nsecret_env: MY_SECRET\n").SecretEnv);
 

@@ -2,7 +2,7 @@ using EggIdentity.Contract;
 
 namespace EggIdentity.Agent;
 
-public sealed class DeployHandler(Func<DeployResponse> run) {
+public sealed class DeployHandler {
     private readonly Lock _gate = new();
     private bool _inProgress;
 
@@ -17,14 +17,14 @@ public sealed class DeployHandler(Func<DeployResponse> run) {
         }
     }
 
-    public DeployResponse RunAndExit() {
+    public DeployResponse RunAndExit(Func<DeployResponse> run) {
         try { return run(); } finally {
             lock (_gate) { _inProgress = false; }
         }
     }
 
-    public (DeployResponse Result, bool Ran) TryRun() {
+    public (DeployResponse Result, bool Ran) TryRun(Func<DeployResponse> run) {
         if (!TryEnter()) return (new DeployResponse(), false);
-        return (RunAndExit(), true);
+        return (RunAndExit(run), true);
     }
 }

@@ -1,6 +1,6 @@
-using Npgsql;
 using EggIdentity.Db;
 using EggIdentity.Tools;
+using Npgsql;
 
 var commit = args.Contains("--commit");
 

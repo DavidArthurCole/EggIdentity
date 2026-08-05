@@ -1,12 +1,12 @@
 using System.Security.Claims;
+using EggIdentity.Auth;
+using EggIdentity.Client;
+using EggIdentity.Contract;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using EggIdentity.Auth;
-using EggIdentity.Contract;
-using EggIdentity.Client;
 using Xunit;
 
 namespace EggIdentity.Auth.Tests;

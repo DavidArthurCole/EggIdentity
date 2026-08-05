@@ -7,11 +7,11 @@
     <HeadOutlet @rendermode="@RenderMode"/>
 </head>
 <body>
-    <Routes @rendermode="@RenderMode"/>
-    <script src="_framework/blazor.web.js"></script>
+<Routes @rendermode="@RenderMode"/>
+<script src="_framework/blazor.web.js"></script>
 </body>
 </html>
 
 @code {
-    private static readonly InteractiveServerRenderMode RenderMode = new(prerender: false);
+    private static readonly InteractiveServerRenderMode RenderMode = new(false);
 }

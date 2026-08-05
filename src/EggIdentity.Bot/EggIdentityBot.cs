@@ -1,8 +1,8 @@
 using Discord;
 using Discord.WebSocket;
-using Npgsql;
 using EggIdentity.Contract;
 using EggIdentity.Db;
+using Npgsql;
 
 namespace EggIdentity.Bot;
 

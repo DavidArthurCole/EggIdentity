@@ -13,14 +13,21 @@ public sealed class GitPull : IStep {
         if (output.Contains("Already up to date.")) {
             c.ShortCircuit = true;
             c.ToHash = c.FromHash;
+            c.HeadRevisionFull = FullHash(c);
             return null;
         }
         c.ToHash = ShortHash(c);
+        c.HeadRevisionFull = FullHash(c);
         return null;
     }
 
     private static string ShortHash(RunContext c) {
         var (output, _) = c.Run("git", ["-C", c.Repo, "rev-parse", "--short", "HEAD"]);
+        return output.Trim();
+    }
+
+    private static string FullHash(RunContext c) {
+        var (output, _) = c.Run("git", ["-C", c.Repo, "rev-parse", "HEAD"]);
         return output.Trim();
     }
 }
@@ -29,7 +36,11 @@ public sealed class DockerBuild : IStep {
     public string Tag { get; set; } = "";
 
     public string? Exec(RunContext c) {
-        var (output, ok) = c.Run("docker", ["build", "-t", Tag, c.Repo]);
+        List<string> args = ["build", "-t", Tag];
+        if (!string.IsNullOrEmpty(c.HeadRevisionFull))
+            args.AddRange(["--label", $"org.opencontainers.image.revision={c.HeadRevisionFull}"]);
+        args.Add(c.Repo);
+        var (output, ok) = c.Run("docker", [.. args]);
         c.Out.Append(output);
         return ok ? null : "docker build failed";
     }
@@ -50,9 +61,31 @@ public sealed class DockerPull : IStep {
         (c.ToHash, c.ToUrl) = ImageIdent(c, Ref);
 
         var upToDate = output.Contains("Image is up to date") && ContainerMatchesImage(c);
+        if (!upToDate && TryGetPulledRevision(c, Ref, out var pulledRevision) && IsRevisionStale(c, pulledRevision)) {
+            c.Out.Append($"docker-pull: pulled revision {pulledRevision} is behind local HEAD, treating as stale, skipping\n");
+            upToDate = true;
+        }
         c.ShortCircuit = c.DockerPullSeen ? c.ShortCircuit && upToDate : upToDate;
         c.DockerPullSeen = true;
         return null;
+    }
+
+    private static bool TryGetPulledRevision(RunContext c, string imageRef, out string revision) {
+        var (output, ok) = c.Run("docker",
+            ["image", "inspect", "--format", "{{index .Config.Labels \"org.opencontainers.image.revision\"}}", imageRef]);
+        revision = ok ? output.Trim() : "";
+        return revision is not ("" or "<no value>");
+    }
+
+    private static bool IsRevisionStale(RunContext c, string revision) {
+        if (c.Repo == "" || revision == "") return false;
+        var (_, fetchOk) = c.Run("git", ["-C", c.Repo, "fetch"]);
+        if (!fetchOk) return false;
+        var (_, isAncestor) = c.Run("git", ["-C", c.Repo, "merge-base", "--is-ancestor", revision, "HEAD"]);
+        if (!isAncestor) return false;
+        var (headOut, headOk) = c.Run("git", ["-C", c.Repo, "rev-parse", "HEAD"]);
+        if (!headOk) return false;
+        return headOut.Trim() != revision;
     }
 
     private bool ContainerMatchesImage(RunContext c) {
@@ -185,45 +218,45 @@ public sealed class PortainerUpdateService : IStep {
             return $"portainer-update-stack: missing env ({UrlEnv}/{KeyEnv}/{StackIdEnv}/{EndpointIdEnv})";
 
         lock (StackLock) {
-        try {
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
-            http.DefaultRequestHeaders.Add("X-API-Key", key);
+            try {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+                http.DefaultRequestHeaders.Add("X-API-Key", key);
 
-            var getResp = http.GetAsync($"{baseUrl}/api/stacks/{stackId}").GetAwaiter().GetResult();
-            var getBody = getResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            if (!getResp.IsSuccessStatusCode)
-                return $"portainer-update-stack: GET stack {(int)getResp.StatusCode}: {Trunc(getBody)}";
+                var getResp = http.GetAsync($"{baseUrl}/api/stacks/{stackId}").GetAwaiter().GetResult();
+                var getBody = getResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                if (!getResp.IsSuccessStatusCode)
+                    return $"portainer-update-stack: GET stack {(int)getResp.StatusCode}: {Trunc(getBody)}";
 
-            using var stack = JsonDocument.Parse(getBody);
-            var fileResp = http.GetAsync($"{baseUrl}/api/stacks/{stackId}/file").GetAwaiter().GetResult();
-            var fileBody = fileResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            if (!fileResp.IsSuccessStatusCode)
-                return $"portainer-update-stack: GET stack file {(int)fileResp.StatusCode}: {Trunc(fileBody)}";
-            using var fileDoc = JsonDocument.Parse(fileBody);
-            var composeContent = fileDoc.RootElement.GetProperty("StackFileContent").GetString() ?? "";
+                using var stack = JsonDocument.Parse(getBody);
+                var fileResp = http.GetAsync($"{baseUrl}/api/stacks/{stackId}/file").GetAwaiter().GetResult();
+                var fileBody = fileResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                if (!fileResp.IsSuccessStatusCode)
+                    return $"portainer-update-stack: GET stack file {(int)fileResp.StatusCode}: {Trunc(fileBody)}";
+                using var fileDoc = JsonDocument.Parse(fileBody);
+                var composeContent = fileDoc.RootElement.GetProperty("StackFileContent").GetString() ?? "";
 
-            var envArray = stack.RootElement.TryGetProperty("Env", out var env) && env.ValueKind == JsonValueKind.Array
-                ? env
-                : default;
+                var envArray = stack.RootElement.TryGetProperty("Env", out var env) && env.ValueKind == JsonValueKind.Array
+                    ? env
+                    : default;
 
-            var payload = new Dictionary<string, object?> {
-                ["stackFileContent"] = composeContent,
-                ["pullImage"] = PullImage,
-                ["prune"] = false,
-            };
-            if (envArray.ValueKind == JsonValueKind.Array)
-                payload["env"] = JsonSerializer.Deserialize<object[]>(envArray.GetRawText());
+                var payload = new Dictionary<string, object?> {
+                    ["stackFileContent"] = composeContent,
+                    ["pullImage"] = PullImage,
+                    ["prune"] = false,
+                };
+                if (envArray.ValueKind == JsonValueKind.Array)
+                    payload["env"] = JsonSerializer.Deserialize<object[]>(envArray.GetRawText());
 
-            var json = JsonSerializer.Serialize(payload);
-            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-            var putUrl = $"{baseUrl}/api/stacks/{stackId}?endpointId={endpointId}";
-            var putResp = http.PutAsync(putUrl, content).GetAwaiter().GetResult();
-            var putBody = putResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            c.Out.Append($"portainer-update-stack {stackId} -> {(int)putResp.StatusCode}\n");
-            if (!putResp.IsSuccessStatusCode)
-                return $"portainer-update-stack: PUT {(int)putResp.StatusCode}: {Trunc(putBody)}";
-            return null;
-        } catch (Exception e) { return $"portainer-update-stack: {e.Message}"; }
+                var json = JsonSerializer.Serialize(payload);
+                using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                var putUrl = $"{baseUrl}/api/stacks/{stackId}?endpointId={endpointId}";
+                var putResp = http.PutAsync(putUrl, content).GetAwaiter().GetResult();
+                var putBody = putResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                c.Out.Append($"portainer-update-stack {stackId} -> {(int)putResp.StatusCode}\n");
+                if (!putResp.IsSuccessStatusCode)
+                    return $"portainer-update-stack: PUT {(int)putResp.StatusCode}: {Trunc(putBody)}";
+                return null;
+            } catch (Exception e) { return $"portainer-update-stack: {e.Message}"; }
         }
     }
 

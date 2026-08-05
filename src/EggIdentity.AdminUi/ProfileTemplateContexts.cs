@@ -1,6 +1,6 @@
+using EggIdentity.Contract;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
-using EggIdentity.Contract;
 
 namespace EggIdentity.AdminUi;
 

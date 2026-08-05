@@ -1,7 +1,7 @@
 @page "/admin"
-@rendermode @(RenderMode.InteractiveServer)
 @using EggIdentity.Auth
 @using EggIdentity.Contract
+@rendermode @(RenderMode.InteractiveServer)
 
 <PageTitle>EggIdentity admin</PageTitle>
 
@@ -21,6 +21,8 @@
             var state = await AuthStateTask;
             _isAdmin = state.User.IsAtLeast(UserRole.Admin);
         }
+
         _checked = true;
     }
+
 }

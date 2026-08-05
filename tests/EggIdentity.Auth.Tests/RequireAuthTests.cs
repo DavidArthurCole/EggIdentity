@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Http;
 using EggIdentity.Auth;
+using Microsoft.AspNetCore.Http;
 using Xunit;
 
 namespace EggIdentity.Auth.Tests;

@@ -1,9 +1,9 @@
 using Discord;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Logging;
 using EggIdentity.Config;
 using EggIdentity.Contract;
 using EggIdentity.Db;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Logging;
 
 namespace EggIdentity.Bot;
 

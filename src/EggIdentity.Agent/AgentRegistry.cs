@@ -10,8 +10,7 @@ public sealed class AgentRegistry {
         var apps = new Dictionary<string, AgentConfig>(StringComparer.OrdinalIgnoreCase);
         foreach (var path in Directory.EnumerateFiles(dir, "*.yaml").OrderBy(p => p, StringComparer.Ordinal)) {
             AgentConfig cfg;
-            try { cfg = AgentConfig.Parse(File.ReadAllText(path)); }
-            catch (Exception e) { throw new FormatException($"{Path.GetFileName(path)}: {e.Message}", e); }
+            try { cfg = AgentConfig.Parse(File.ReadAllText(path)); } catch (Exception e) { throw new FormatException($"{Path.GetFileName(path)}: {e.Message}", e); }
 
             if (string.IsNullOrWhiteSpace(cfg.Name))
                 throw new FormatException($"{Path.GetFileName(path)}: name is required");

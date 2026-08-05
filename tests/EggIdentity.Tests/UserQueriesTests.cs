@@ -1,6 +1,6 @@
-using Npgsql;
-using EggIdentity.Db;
 using EggIdentity;
+using EggIdentity.Db;
+using Npgsql;
 
 namespace EggIdentity.Tests;
 

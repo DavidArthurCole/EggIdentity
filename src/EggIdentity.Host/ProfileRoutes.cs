@@ -1,6 +1,6 @@
+using EggIdentity;
 using EggIdentity.Auth;
 using EggIdentity.Contract;
-using EggIdentity;
 
 namespace EggIdentity.Host;
 

@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using EggIdentity.Client;
+using EggIdentity.Contract;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -6,8 +8,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
-using EggIdentity.Contract;
-using EggIdentity.Client;
 
 namespace EggIdentity.Auth;
 

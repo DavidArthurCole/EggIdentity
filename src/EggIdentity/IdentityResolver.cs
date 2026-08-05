@@ -1,5 +1,5 @@
-using Npgsql;
 using EggIdentity.Contract;
+using Npgsql;
 
 namespace EggIdentity;
 

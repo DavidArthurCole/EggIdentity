@@ -1,5 +1,5 @@
-using Scriban.Runtime;
 using EggIdentity.Contract;
+using Scriban.Runtime;
 
 namespace EggIdentity.Bot;
 

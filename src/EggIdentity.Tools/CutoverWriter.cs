@@ -1,5 +1,5 @@
-using Npgsql;
 using EggIdentity.Models;
+using Npgsql;
 
 namespace EggIdentity.Tools;
 
