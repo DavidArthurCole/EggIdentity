@@ -3,14 +3,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY EggIdentity.slnx Directory.Build.props global.json ./
-COPY --parents src/*/*.csproj ./
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet restore src/EggIdentity.Core/EggIdentity.Core.csproj
-
 COPY . .
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet publish src/EggIdentity.Core/EggIdentity.Core.csproj -c Release -o /app/publish --no-restore
+    dotnet publish src/EggIdentity.Core/EggIdentity.Core.csproj -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
