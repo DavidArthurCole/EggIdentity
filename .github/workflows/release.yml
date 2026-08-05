@@ -52,7 +52,7 @@ jobs:
     uses: ./.github/workflows/fast-deploy-trigger.yml
     with:
       app: EggIdentity
-      agent-url: https://TODO-fill-in-agent-base-url
+      agent-url: https://eggidentity.davidarthurcole.me/agent
     secrets:
       deploy-secret: ${{ secrets.IDENTITY_DEPLOY_SECRET }}
 
@@ -60,6 +60,6 @@ jobs:
     uses: ./.github/workflows/fast-deploy-trigger.yml
     with:
       app: eggidentity-agent
-      agent-url: https://TODO-fill-in-agent-base-url
+      agent-url: https://eggidentity.davidarthurcole.me/agent
     secrets:
       deploy-secret: ${{ secrets.AGENT_SELF_DEPLOY_SECRET }}
