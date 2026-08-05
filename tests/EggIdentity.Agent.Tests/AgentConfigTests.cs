@@ -46,6 +46,13 @@ public class AgentConfigTests {
     }
 
     [Fact]
+    public void Parse_DockerBuildStep_DecodesDockerfile() {
+        var cfg = AgentConfig.Parse("name: t\nfast_steps:\n  - docker-build: { tag: img:latest, dockerfile: src/App/Dockerfile }\n");
+        var step = Assert.IsType<DockerBuild>(cfg.FastSteps[0]);
+        Assert.Equal("src/App/Dockerfile", step.Dockerfile);
+    }
+
+    [Fact]
     public void Parse_NoFastSteps_DefaultsEmpty() {
         var cfg = AgentConfig.Parse("name: t\nsteps:\n  - portainer-update-stack\n");
         Assert.Empty(cfg.FastSteps);

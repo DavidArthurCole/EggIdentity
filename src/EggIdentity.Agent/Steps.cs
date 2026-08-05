@@ -34,9 +34,11 @@ public sealed class GitPull : IStep {
 
 public sealed class DockerBuild : IStep {
     public string Tag { get; set; } = "";
+    public string Dockerfile { get; set; } = "";
 
     public string? Exec(RunContext c) {
         List<string> args = ["build", "-t", Tag];
+        if (Dockerfile != "") args.AddRange(["-f", Path.Combine(c.Repo, Dockerfile)]);
         if (!string.IsNullOrEmpty(c.HeadRevisionFull))
             args.AddRange(["--label", $"org.opencontainers.image.revision={c.HeadRevisionFull}"]);
         args.Add(c.Repo);

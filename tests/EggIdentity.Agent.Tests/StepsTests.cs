@@ -33,6 +33,35 @@ public class StepsTests {
     }
 
     [Fact]
+    public void DockerBuild_DockerfileSet_AddsDashFArg() {
+        string[] capturedArgs = [];
+        (string, bool) Run(string name, string[] args) {
+            capturedArgs = args;
+            return ("", true);
+        }
+        var c = new RunContext { Repo = "/repo", RepoUrl = "", Run = Run };
+        var step = new DockerBuild { Tag = "img:latest", Dockerfile = "src/App/Dockerfile" };
+
+        Assert.Null(step.Exec(c));
+        Assert.Contains("-f", capturedArgs);
+        Assert.Contains(Path.Combine("/repo", "src/App/Dockerfile"), capturedArgs);
+    }
+
+    [Fact]
+    public void DockerBuild_DockerfileUnset_OmitsDashF() {
+        string[] capturedArgs = [];
+        (string, bool) Run(string name, string[] args) {
+            capturedArgs = args;
+            return ("", true);
+        }
+        var c = new RunContext { Repo = "/repo", RepoUrl = "", Run = Run };
+        var step = new DockerBuild { Tag = "img:latest" };
+
+        Assert.Null(step.Exec(c));
+        Assert.DoesNotContain("-f", capturedArgs);
+    }
+
+    [Fact]
     public void GitPull_AlreadyUpToDate_SetsHeadRevisionFull() {
         static (string, bool) Run(string name, string[] args) {
             if (args[2] == "pull") return ("Already up to date.\n", true);

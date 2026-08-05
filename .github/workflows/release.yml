@@ -47,3 +47,19 @@ jobs:
       context: .
       dockerfile: src/EggIdentity.Agent/Dockerfile
       cache-scope: agent
+
+  fast-deploy-identity:
+    uses: ./.github/workflows/fast-deploy-trigger.yml
+    with:
+      app: EggIdentity
+      agent-url: https://TODO-fill-in-agent-base-url
+    secrets:
+      deploy-secret: ${{ secrets.IDENTITY_DEPLOY_SECRET }}
+
+  fast-deploy-agent:
+    uses: ./.github/workflows/fast-deploy-trigger.yml
+    with:
+      app: eggidentity-agent
+      agent-url: https://TODO-fill-in-agent-base-url
+    secrets:
+      deploy-secret: ${{ secrets.AGENT_SELF_DEPLOY_SECRET }}

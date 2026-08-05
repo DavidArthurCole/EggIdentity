@@ -60,7 +60,7 @@ public sealed class AgentConfig {
             var p = paramsNode as YamlMappingNode ?? [];
             return key switch {
                 "docker-pull" => new DockerPull { Ref = Field(p, "ref"), Container = Field(p, "container") },
-                "docker-build" => new DockerBuild { Tag = Field(p, "tag") },
+                "docker-build" => new DockerBuild { Tag = Field(p, "tag"), Dockerfile = Field(p, "dockerfile") },
                 "container-recreate" => new ContainerRecreate { Name = Field(p, "name") },
                 "webhook" => new Webhook { Url = Field(p, "url"), UrlEnv = Field(p, "url_env") },
                 "app-callback" => new AppCallback { UrlEnv = Field(p, "url_env"), SecretEnv = Field(p, "secret_env") },
