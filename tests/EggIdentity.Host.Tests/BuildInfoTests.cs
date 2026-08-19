@@ -1,8 +1,8 @@
 using System.Reflection;
-using EggIdentity.Core;
+using EggIdentity.Host;
 using Xunit;
 
-namespace EggIdentity.Core.Tests;
+namespace EggIdentity.Host.Tests;
 
 public class BuildInfoTests {
     [Fact]

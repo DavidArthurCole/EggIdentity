@@ -1,7 +1,7 @@
 using System.Reflection;
 using EggIdentity.Contract;
 
-namespace EggIdentity.Core;
+namespace EggIdentity.Host;
 
 public static class BuildInfo {
     public static VerifyInfo Build(Func<string, string?> envGetter, Assembly assembly) {

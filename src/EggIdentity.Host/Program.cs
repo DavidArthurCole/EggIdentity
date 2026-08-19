@@ -1,11 +1,17 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using Discord.WebSocket;
 using EggIdentity;
 using EggIdentity.Auth;
+using EggIdentity.Bot;
+using EggIdentity.Client;
 using EggIdentity.Contract;
 using EggIdentity.Db;
 using EggIdentity.Host;
+using EggIdentity.Host.Components;
 using EggIdentity.Models;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -32,6 +38,10 @@ var avatarStorageDir = Environment.GetEnvironmentVariable("AVATAR_STORAGE_DIR");
 var profileEnabled = loginWidgetEnabled && sessionOptions is not null && !string.IsNullOrEmpty(avatarStorageDir);
 var sponsorConfig = SponsorConfig.FromEnvironment();
 var sponsorEnabled = sponsorConfig is not null && sessionOptions is not null;
+
+var botConfigFilePath = Environment.GetEnvironmentVariable("EGGIDENTITY_BOT_CONFIG_FILE") ?? "/etc/eggidentity/bot.env";
+var botEnabled = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCORD_TOKEN"));
+var adminEnabled = botEnabled && loginWidgetEnabled && sessionOptions is not null;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls($"http://*:{port}");
@@ -64,8 +74,32 @@ if (loginWidgetEnabled) {
         new OpenIdConnectConfigurationRetriever()));
 }
 
+if (botEnabled) {
+    builder.Services.AddSingleton(new BotHostedService(botConfigFilePath, connString));
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<BotHostedService>());
+    builder.Services.AddScoped(sp => sp.GetRequiredService<BotHostedService>().Bot?.ConfigService!);
+}
+
+if (adminEnabled) {
+    builder.Services.AddHttpClient<IdentityApiClient>(c => {
+        c.BaseAddress = new Uri($"http://localhost:{port}");
+        c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiSecret);
+    });
+    builder.Services.AddAuthentication(EggIdentitySessionDefaults.Scheme)
+        .AddEggIdentitySession(sessionOptions!);
+    builder.Services.AddAuthorization();
+    builder.Services.AddCascadingAuthenticationState();
+    builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+}
+
 var app = builder.Build();
 app.UseStaticFiles();
+
+if (adminEnabled) {
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.UseAntiforgery();
+}
 
 await using (var conn = await dataSource.OpenConnectionAsync())
     await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "Migrations"));
@@ -424,7 +458,9 @@ if (sponsorEnabled) {
 app.Use(async (ctx, next) => {
     if (ctx.Request.Path.StartsWithSegments("/auth") || ctx.Request.Path.StartsWithSegments("/eggidentity-login.js")
         || ctx.Request.Path.StartsWithSegments("/profile") || ctx.Request.Path.StartsWithSegments("/avatars")
-        || ctx.Request.Path.StartsWithSegments("/webhooks")) {
+        || ctx.Request.Path.StartsWithSegments("/webhooks") || ctx.Request.Path.StartsWithSegments("/admin")
+        || ctx.Request.Path.StartsWithSegments("/_framework") || ctx.Request.Path.StartsWithSegments("/_blazor")
+        || ctx.Request.Path.StartsWithSegments("/_content")) {
         await next();
         return;
     }
@@ -491,6 +527,9 @@ app.MapPost("/identity/redeem", async (RedeemLoginCodeRequest req, LoginCodeStor
         IsNew = redeemed.IsNew,
     });
 });
+
+if (adminEnabled)
+    app.MapRazorComponents<AppHost>().AddInteractiveServerRenderMode();
 
 app.Run();
 

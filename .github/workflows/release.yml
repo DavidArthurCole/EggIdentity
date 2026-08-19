@@ -21,7 +21,6 @@ jobs:
         src/EggIdentity.Bot/EggIdentity.Bot.csproj
         src/EggIdentity.Bot.AdminUi/EggIdentity.Bot.AdminUi.csproj
         src/EggIdentity.CodeStyle/EggIdentity.CodeStyle.csproj
-        src/EggIdentity.Core/EggIdentity.Core.csproj
         src/EggIdentity.Config/EggIdentity.Config.csproj
         src/EggIdentity/EggIdentity.csproj
         src/EggIdentity.Client/EggIdentity.Client.csproj

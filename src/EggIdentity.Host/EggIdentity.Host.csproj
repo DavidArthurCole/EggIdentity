@@ -19,10 +19,15 @@
     <ProjectReference Include="..\EggIdentity.Db\EggIdentity.Db.csproj" />
     <ProjectReference Include="..\EggIdentity.Contract\EggIdentity.Contract.csproj" />
     <ProjectReference Include="..\EggIdentity.Auth\EggIdentity.Auth.csproj" />
+    <ProjectReference Include="..\EggIdentity.Bot\EggIdentity.Bot.csproj" />
+    <ProjectReference Include="..\EggIdentity.Bot.AdminUi\EggIdentity.Bot.AdminUi.csproj" />
+    <ProjectReference Include="..\EggIdentity.Client\EggIdentity.Client.csproj" />
+    <ProjectReference Include="..\EggIdentity.Config\EggIdentity.Config.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="..\EggIdentity\Migrations\*.up.sql" Link="Migrations\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\EggIdentity.Bot\Migrations\*.up.sql" Link="BotMigrations\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

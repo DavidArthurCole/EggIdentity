@@ -5,14 +5,15 @@ using EggIdentity.Db;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 
-namespace EggIdentity.Core;
+namespace EggIdentity.Host;
 
-public sealed class EggIdentityCoreBotHostedService(string configFilePath) : IHostedService {
+public sealed class BotHostedService(string configFilePath, string postgresConnectionString) : IHostedService {
     public EggIdentityBot? Bot { get; private set; }
 
     public async Task StartAsync(CancellationToken cancellationToken) {
         var builder = new EggIdentityBotBuilder()
             .WithConfigFile(configFilePath)
+            .WithEnvFallback(key => key == "POSTGRES_CONNECTION_STRING" ? postgresConnectionString : Environment.GetEnvironmentVariable(key))
             .WithName("EggIdentity")
             .WithBuild(BuildInfo.Build(Environment.GetEnvironmentVariable, Assembly.GetExecutingAssembly()));
 
@@ -22,18 +23,18 @@ public sealed class EggIdentityCoreBotHostedService(string configFilePath) : IHo
             Bot = await EggIdentityBot.StartAsync(cfg, builder);
         } catch (GatewayReconnectException ex) {
             Console.Error.WriteLine(
-                $"eggidentity-core: bot start failed - gateway rejected the connection, likely because the " +
+                $"eggidentity: bot start failed - gateway rejected the connection, likely because the " +
                 $"GuildMembers privileged intent isn't enabled for this bot application: {ex.Message}");
         } catch (Exception ex) {
-            Console.Error.WriteLine($"eggidentity-core: bot start failed, continuing: {ex.Message}");
+            Console.Error.WriteLine($"eggidentity: bot start failed, continuing: {ex.Message}");
         }
 
-        if (Bot is null || string.IsNullOrEmpty(cfg.PostgresConnectionString) || !ulong.TryParse(cfg.GuildId, out var guildId))
+        if (Bot is null || !ulong.TryParse(cfg.GuildId, out var guildId))
             return;
 
-        var dataSource = NpgsqlDataSource.Create(cfg.PostgresConnectionString);
+        var dataSource = NpgsqlDataSource.Create(postgresConnectionString);
         await using (var conn = await dataSource.OpenConnectionAsync(cancellationToken))
-            await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "Migrations"), cancellationToken);
+            await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "BotMigrations"), cancellationToken);
 
         var channelConfigStore = new ChannelConfigStore(dataSource);
         var notifier = new DeployNotifier(channelConfigStore, Bot.Client, guildId, cfg.Name);
@@ -42,7 +43,7 @@ public sealed class EggIdentityCoreBotHostedService(string configFilePath) : IHo
         try {
             await tracker.CheckAndNotifyAsync(cfg.Name, Environment.GetEnvironmentVariable("GIT_SHA") ?? "", cfg.Build.Version, cancellationToken);
         } catch (Exception ex) {
-            Console.Error.WriteLine($"eggidentity-core: deploy self-report failed, continuing: {ex.Message}");
+            Console.Error.WriteLine($"eggidentity: deploy self-report failed, continuing: {ex.Message}");
         }
     }
 

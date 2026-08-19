@@ -1,6 +1,7 @@
 @page "/admin"
 @using EggIdentity.Auth
 @using EggIdentity.Contract
+@inject NavigationManager Nav
 @rendermode @(RenderMode.InteractiveServer)
 
 <PageTitle>EggIdentity admin</PageTitle>
@@ -8,15 +9,19 @@
 @if (_isAdmin) {
     <MessageConfigEditor/>
 } else if (_checked) {
-    <p>Admin access required. <a href="/admin/login">Log in</a></p>
+    <p>Admin access required. <a href="@_loginUrl">Log in</a></p>
 }
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
     private bool _isAdmin;
     private bool _checked;
+    private string _loginUrl = "";
 
     protected override async Task OnInitializedAsync() {
+        var returnUrl = Uri.EscapeDataString(Nav.ToAbsoluteUri("/admin").ToString());
+        _loginUrl = $"/auth/go/discord?returnUrl={returnUrl}&mode=redirect";
+
         if (AuthStateTask is not null) {
             var state = await AuthStateTask;
             _isAdmin = state.User.IsAtLeast(UserRole.Admin);
