@@ -456,7 +456,7 @@ if (sponsorEnabled) {
 }
 
 app.Use(async (ctx, next) => {
-    if (ctx.Request.Path.StartsWithSegments("/auth") || ctx.Request.Path.StartsWithSegments("/eggidentity-login.js")
+    if (ctx.Request.Path == "/" || ctx.Request.Path.StartsWithSegments("/auth") || ctx.Request.Path.StartsWithSegments("/eggidentity-login.js")
         || ctx.Request.Path.StartsWithSegments("/profile") || ctx.Request.Path.StartsWithSegments("/avatars")
         || ctx.Request.Path.StartsWithSegments("/webhooks") || ctx.Request.Path.StartsWithSegments("/admin")
         || ctx.Request.Path.StartsWithSegments("/_framework") || ctx.Request.Path.StartsWithSegments("/_blazor")
@@ -528,8 +528,10 @@ app.MapPost("/identity/redeem", async (RedeemLoginCodeRequest req, LoginCodeStor
     });
 });
 
-if (adminEnabled)
+if (adminEnabled) {
+    app.MapGet("/", () => Results.Redirect("/admin"));
     app.MapRazorComponents<AppHost>().AddInteractiveServerRenderMode();
+}
 
 app.Run();
 
