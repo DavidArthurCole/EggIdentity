@@ -55,6 +55,11 @@ public sealed class EggIdentityBot : IAsyncDisposable {
         client.SlashCommandExecuted += bot.OnSlashCommandAsync;
         client.AutocompleteExecuted += bot.OnAutocompleteAsync;
         client.Ready += bot.OnReadyAsync;
+        client.Log += msg => {
+            if (msg.Severity <= LogSeverity.Warning)
+                Console.Error.WriteLine($"discord: [{msg.Severity}] {msg.Source}: {msg.Message}{(msg.Exception is null ? "" : $" ({msg.Exception.Message})")}");
+            return Task.CompletedTask;
+        };
 
         await client.LoginAsync(TokenType.Bot, cfg.Token);
         await client.StartAsync();
