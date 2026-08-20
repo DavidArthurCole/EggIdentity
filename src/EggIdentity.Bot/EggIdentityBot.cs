@@ -103,7 +103,7 @@ public sealed class EggIdentityBot : IAsyncDisposable {
 
         var dataSource = NpgsqlDataSource.Create(_cfg.PostgresConnectionString);
         await using (var conn = await dataSource.OpenConnectionAsync())
-            await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "Migrations"));
+            await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, _cfg.MigrationsDir), _cfg.MigrationsTableName);
 
         var configStore = new ChannelConfigStore(dataSource);
         _configStore = configStore;

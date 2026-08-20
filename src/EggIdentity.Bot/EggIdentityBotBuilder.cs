@@ -22,6 +22,8 @@ public sealed class EggIdentityBotBuilder {
     private Func<string, Embed>? _failureBuilder;
     private string? _dbConnStr;
     private string? _dbMigrationsDir;
+    private string _migrationsDir = "Migrations";
+    private string _migrationsTableName = "eggidentity_migrations";
     private Func<NewVersionEvent, Task>? _newVersionHandler;
     private string _eventSecret = "";
     private Func<CancellationToken, Task<DashboardSnapshot>>? _dashboardProvider;
@@ -43,6 +45,7 @@ public sealed class EggIdentityBotBuilder {
     public EggIdentityBotBuilder WithSuccessEmbedBuilder(Func<BotConfig, string, string, Embed> build) { _successBuilder = build; return this; }
     public EggIdentityBotBuilder WithFailureEmbedBuilder(Func<string, Embed> build) { _failureBuilder = build; return this; }
     public EggIdentityBotBuilder WithDb(string connStr, string migrationsDir) { _dbConnStr = connStr; _dbMigrationsDir = migrationsDir; return this; }
+    public EggIdentityBotBuilder WithMigrationsLocation(string dir, string tableName) { _migrationsDir = dir; _migrationsTableName = tableName; return this; }
     public EggIdentityBotBuilder WithNewVersionHandler(Func<NewVersionEvent, Task> handler, string eventSecret) { _newVersionHandler = handler; _eventSecret = eventSecret; return this; }
     public EggIdentityBotBuilder WithDashboardProvider(Func<CancellationToken, Task<DashboardSnapshot>> provider) { _dashboardProvider = provider; return this; }
     public EggIdentityBotBuilder WithDashboardRefreshInterval(TimeSpan interval) { _dashboardRefreshInterval = interval; return this; }
@@ -61,6 +64,8 @@ public sealed class EggIdentityBotBuilder {
             DeployAgentSecret = values.DeployAgentSecret ?? "",
             PostgresConnectionString = values.PostgresConnectionString ?? "",
             DashboardChannelId = values.DashboardChannelId ?? "",
+            MigrationsDir = _migrationsDir,
+            MigrationsTableName = _migrationsTableName,
             DashboardProvider = _dashboardProvider,
             DashboardRefreshInterval = _dashboardRefreshInterval,
             Build = _build,

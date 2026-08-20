@@ -30,6 +30,8 @@ public sealed class BotConfig {
 
     public string DashboardChannelId { get; init; } = "";
     public string PostgresConnectionString { get; init; } = "";
+    public string MigrationsDir { get; init; } = "Migrations";
+    public string MigrationsTableName { get; init; } = "eggidentity_migrations";
 
     public Func<CancellationToken, Task<DashboardSnapshot>>? DashboardProvider { get; init; }
     public TimeSpan DashboardRefreshInterval { get; init; } = TimeSpan.FromMinutes(5);

@@ -17,15 +17,18 @@ public static class Migrator {
             .ToList();
     }
 
-    public static async Task MigrateAsync(NpgsqlConnection conn, string dir, CancellationToken ct = default) {
+    public static Task MigrateAsync(NpgsqlConnection conn, string dir, CancellationToken ct = default) =>
+        MigrateAsync(conn, dir, "eggidentity_migrations", ct);
+
+    public static async Task MigrateAsync(NpgsqlConnection conn, string dir, string tableName, CancellationToken ct = default) {
         await using (var create = new NpgsqlCommand(
-            "CREATE TABLE IF NOT EXISTS eggidentity_migrations (version INTEGER PRIMARY KEY)", conn)) {
+            $"CREATE TABLE IF NOT EXISTS {tableName} (version INTEGER PRIMARY KEY)", conn)) {
             await create.ExecuteNonQueryAsync(ct);
         }
 
         int current;
         await using (var q = new NpgsqlCommand(
-            "SELECT COALESCE(MAX(version), 0) FROM eggidentity_migrations", conn)) {
+            $"SELECT COALESCE(MAX(version), 0) FROM {tableName}", conn)) {
             current = Convert.ToInt32(await q.ExecuteScalarAsync(ct));
         }
 
@@ -38,7 +41,7 @@ public static class Migrator {
             await using (var exec = new NpgsqlCommand(sql, conn))
                 await exec.ExecuteNonQueryAsync(ct);
             await using (var rec = new NpgsqlCommand(
-                "INSERT INTO eggidentity_migrations (version) VALUES ($1)", conn)) {
+                $"INSERT INTO {tableName} (version) VALUES ($1)", conn)) {
                 rec.Parameters.Add(new NpgsqlParameter { Value = v });
                 await rec.ExecuteNonQueryAsync(ct);
             }

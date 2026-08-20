@@ -15,7 +15,8 @@ public sealed class BotHostedService(string configFilePath, string postgresConne
             .WithConfigFile(configFilePath)
             .WithEnvFallback(key => key == "POSTGRES_CONNECTION_STRING" ? postgresConnectionString : Environment.GetEnvironmentVariable(key))
             .WithName("EggIdentity")
-            .WithBuild(BuildInfo.Build(Environment.GetEnvironmentVariable, Assembly.GetExecutingAssembly()));
+            .WithBuild(BuildInfo.Build(Environment.GetEnvironmentVariable, Assembly.GetExecutingAssembly()))
+            .WithMigrationsLocation("BotMigrations", "eggidentity_bot_migrations");
 
         var cfg = builder.BuildConfig();
 
@@ -34,7 +35,7 @@ public sealed class BotHostedService(string configFilePath, string postgresConne
 
         var dataSource = NpgsqlDataSource.Create(postgresConnectionString);
         await using (var conn = await dataSource.OpenConnectionAsync(cancellationToken))
-            await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "BotMigrations"), cancellationToken);
+            await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "BotMigrations"), "eggidentity_bot_migrations", cancellationToken);
 
         var channelConfigStore = new ChannelConfigStore(dataSource);
         var notifier = new DeployNotifier(channelConfigStore, Bot.Client, guildId, cfg.Name);
